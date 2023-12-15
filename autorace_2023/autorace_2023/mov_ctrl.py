@@ -1,18 +1,18 @@
 import rclpy
 import numpy as np
 import math
-import tf
+import tf2_ros
 from enum import Enum
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from turtlebot3_autorace_msgs.msg import MovingParam
+from autorace_msgs.msg import MovingParam
 
 class ControlMoving(Node):
     def __init__(self):
-        self.super(ControlMoving).__init__()
+        super().__init__("ControlMoving")
         self.sub_moving_state = self.create_subscription(MovingParam, '/control/moving/state', self.get_param, 1)
         self.sub_odom = self.create_subscription(Odometry, '/odom', self.cbOdom, 1)
 
@@ -52,8 +52,8 @@ class ControlMoving(Node):
         msg_pub_max_vel.data = 0.05
         self.pub_max_vel.publish(msg_pub_max_vel)
 
-        loop_rate = rclpy.Rate(100) # 10hz
-        while not rclpy.is_shutdown():
+        loop_rate = self.create_rate(100) # 10hz
+        while not rclpy.ok():
             if self.is_step_left == True:
                 self.turn_left(self.moving_msg)
             elif self.is_step_right == True:
@@ -65,7 +65,7 @@ class ControlMoving(Node):
             else:
                 pass
             loop_rate.sleep()
-        rclpy.on_shutdown(self.fnShutDown)
+        # self.fnShutDown()
 
 
     def get_param(self, msg):
@@ -292,26 +292,28 @@ class ControlMoving(Node):
         self.current_pos_y = odom_msg.pose.pose.position.y
 
     def euler_from_quaternion(self, quaternion):
-        theta = tf.transformations.euler_from_quaternion(quaternion)[2]
+        theta = tf2_ros.transformations.euler_from_quaternion(quaternion)[2]
         return theta
 
     def fnShutDown(self):
         self.get_logger().info("Shutting down. cmd_vel will be 0")
 
         twist = Twist()
-        twist.linear.x = 0
-        twist.linear.y = 0
-        twist.linear.z = 0
-        twist.angular.x = 0
-        twist.angular.y = 0
-        twist.angular.z = 0
+        twist.linear.x = 0.
+        twist.linear.y = 0.
+        twist.linear.z = 0.
+        twist.angular.x = 0.
+        twist.angular.y = 0.
+        twist.angular.z = 0.
         self.pub_cmd_vel.publish(twist) 
+        rclpy.shutdown()
 
 
-if __name__ == '__main__':
+def main():
     rclpy.init()
     node = ControlMoving()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
+        node.fnShutDown()
         rclpy.shutdown()

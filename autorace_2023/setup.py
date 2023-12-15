@@ -12,6 +12,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
+        (os.path.join('share', package_name, 'msg'), glob(os.path.join('msg', '*.msg')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -22,7 +23,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "detect_lane = autorace_2023.detect_lane:main"
+            "detect_lane = autorace_2023.detect_lane:main",
+            "mov_ctrl = autorace_2023.mov_ctrl:main",
+            "pid_lane = autorace_2023.pid_lane:main"
         ],
     },
 )

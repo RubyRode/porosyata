@@ -6,16 +6,15 @@ from geometry_msgs.msg import Twist
 
 class ControlLane(Node):
     def __init__(self):
-        self.super(ControlLane).__init__()
+        super().__init__("pid_lane")
 
-        self.sub_lane = self.create_subscription(Float64, '/control/lane', self.cbFollowLane, 1)
+        self.sub_lane = self.create_subscription(Float64, '/detect/lane', self.cbFollowLane, 1)
         self.sub_max_vel = self.create_subscription(Float64, '/control/max_vel', self.cbGetMaxVel, 1)
         self.pub_cmd_vel = self.create_publisher(Twist, '/control/cmd_vel', 1)
 
         self.lastError = 0
         self.MAX_VEL = 0.1
 
-        rclpy.on_shutdown(self.fnShutDown)
 
     def cbGetMaxVel(self, max_vel_msg):
         self.MAX_VEL = max_vel_msg.data
@@ -49,10 +48,11 @@ class ControlLane(Node):
         self.pub_cmd_vel.publish(twist) 
 
 
-    def shutdown_callback():
+    # def shutdown_callback():
 
 
-if __name__ == '__main__':
+
+def main():
     rclpy.init()
     node = ControlLane()
     try:
