@@ -28,7 +28,18 @@ class Detector(Node):
 			0: 'looking for some green lantern',
 			1: '/templates/intersection.png',
 			2: '/templates/turn_left.png',
-			3: '/templates/turn_right.png'
+			3: '/templates/turn_right.png',
+			4: '/templates/blocks.png',
+			5: 'going through some blocks',
+			6: '/templates/parking.png',
+			7: '/templates/car_left.png',
+			8: '/templates/car_right.png',
+			9: 'ryan gosling parking',
+			10: '/templates/zebra.png',
+			11: 'looking for some knight',
+			12: '/templates/tunnel.png',
+			13: 'looking for some slam',
+			14: 'finish'
 			
 		}
 		# Текущий режим работы детектора
@@ -48,15 +59,15 @@ class Detector(Node):
 		# Записываем его (потом уберу запись, скорее всего)
 		cv2.imwrite(self.curr_frame_path, img)
 		
-		is_found = False
-		
 		# Зеленый свет
 		if self.curr_mode == 0:
 			self.detect_green(img)
-		# Выбор направления поворота
-		# (поиск сразу двух знаков)
-		elif self.curr_mode == 2:
-			self.choose_direction(img)
+		# Выбор направления поворота или места на парковке
+		# (выбор между двумя вариантами)
+		elif self.curr_mode == 2 or self.curr_mode == 7:
+			self.choose_from_two(img)
+		elif self.curr_mode == 5 or self.curr_mode == 9 or self.curr_mode == 11:
+			self.curr_mode += 1
 		# Просто поиск знаков
 		else:
 			self.detect_sign(img, self.curr_mode)
@@ -64,9 +75,11 @@ class Detector(Node):
 		# Если нашли, что искали, переключаем режим
 		if self.is_found:
 			self.curr_mode += 1
+			self.curr_mode %= 14
 			self.curr_template = self.images_path + self.modes[self.curr_mode]
 			self.is_found = False
 		
+		print(self.curr_mode)
 		cv2.imshow('camera', img)
 		cv2.waitKey(1)
 	
@@ -91,8 +104,9 @@ class Detector(Node):
 			if not self.is_found:
 				self.is_found = True
 			cv2.rectangle(img, pt, (pt[0] + w, pt[1] + h), (255, 0, 150), 2)
+		return self.is_found
 	
-	def choose_direction(self, img):
+	def choose_from_two(self, img):
 		is_left = False
 		is_right = False
 		
@@ -100,7 +114,6 @@ class Detector(Node):
 		is_right = self.detect_sign(img, self.curr_mode + 1)
 		
 		if is_left or is_right:
-			self.is_found = True
 			self.curr_mode += 1
 		
 
