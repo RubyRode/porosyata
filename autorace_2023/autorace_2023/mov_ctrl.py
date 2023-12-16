@@ -1,7 +1,8 @@
 import rclpy
 import numpy as np
 import math
-import tf2_ros
+# import tf2_ros
+from transforms3d._gohlketransforms import euler_from_quaternion
 from enum import Enum
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import LaserScan
@@ -292,7 +293,7 @@ class ControlMoving(Node):
         self.current_pos_y = odom_msg.pose.pose.position.y
 
     def euler_from_quaternion(self, quaternion):
-        theta = tf2_ros.transformations.euler_from_quaternion(quaternion)[2]
+        theta = euler_from_quaternion(quaternion)[2]
         return theta
 
     def fnShutDown(self):
