@@ -50,7 +50,7 @@ class ControlMoving(Node):
         self.test = math.radians(90)
      
         msg_pub_max_vel = Float64()
-        msg_pub_max_vel.data = 0.05
+        msg_pub_max_vel.data = 1.#0.05
         self.pub_max_vel.publish(msg_pub_max_vel)
 
         loop_rate = self.create_rate(100) # 10hz

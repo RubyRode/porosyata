@@ -5,6 +5,7 @@ from rclpy.node import Node
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import Image, CompressedImage
+from autorace_msgs.msg import TimeStampedFloat64
 # from dynamic_reconfigure.server import Server
 # from turtlebot3_autorace_detect.cfg import DetectLaneParamsConfig
 
@@ -62,7 +63,7 @@ class DetectLane(Node):
             self.pub_image_lane = self.create_publisher(CompressedImage, '/detect/image_output/compressed', 1)
         elif self.pub_image_type == "raw":
             # publishes lane image in raw type
-            self.pub_image_lane = self.create_publisher(Image, '/detect/image_output', 1)
+            self.pub_image_lane = self.create_publisher(Image, '/color/image_projected_compensated', 1)
 
         if self.is_calibration_mode == True:
             if self.pub_image_type == "compressed":
@@ -74,7 +75,7 @@ class DetectLane(Node):
                 self.pub_image_white_lane = self.create_publisher(Image, '/detect/image_output_sub1', 1)
                 self.pub_image_yellow_lane = self.create_publisher(Image, '/detect/image_output_sub2', 1)
 
-        self.pub_lane = self.create_publisher(Float64, '/detect/lane', 1)
+        self.pub_lane = self.create_publisher(TimeStampedFloat64, '/detect/lane', 1)
 
         # subscribes state : yellow line reliability
         self.pub_yellow_line_reliability = self.create_publisher(UInt8, '/detect/yellow_line_reliability', 1)
@@ -412,11 +413,11 @@ class DetectLane(Node):
 
         if yellow_fraction > 3000:
             pts_left = np.array([np.flipud(np.transpose(np.vstack([self.left_fitx, ploty])))])
-            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
+            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=20)
 
         if white_fraction > 3000:
             pts_right = np.array([np.transpose(np.vstack([self.right_fitx, ploty]))])
-            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=20)
         
         self.is_center_x_exist = True
 
@@ -466,8 +467,11 @@ class DetectLane(Node):
         if self.pub_image_type == "compressed":
             if self.is_center_x_exist == True:
                 # publishes lane center
-                msg_desired_center = Float64()
+                msg_desired_center = TimeStampedFloat64()
                 msg_desired_center.data = centerx.item(350)
+                s, ns = self.get_clock().now().seconds_nanoseconds()
+                time = (s + ns * 0.000000001)
+                msg_desired_center.timestamp = time
                 self.pub_lane.publish(msg_desired_center)
 
             self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
@@ -475,8 +479,13 @@ class DetectLane(Node):
         elif self.pub_image_type == "raw":
             if self.is_center_x_exist == True:
                 # publishes lane center
-                msg_desired_center = Float64()
+                self.get_logger().info(f"type: {type(centerx)}")
+                self.get_logger().info(f"shape: {centerx.shape}")
+                msg_desired_center = TimeStampedFloat64()
                 msg_desired_center.data = centerx.item(350)
+                s, ns = self.get_clock().now().seconds_nanoseconds()
+                time = (s + ns * 0.000000001)
+                msg_desired_center.timestamp = time
                 self.pub_lane.publish(msg_desired_center)
 
             self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
