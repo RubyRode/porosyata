@@ -74,7 +74,8 @@ class Detector(Node):
 		# Просто поиск знаков
 		else:
 			self.detect_sign(img, self.curr_mode)
-		
+		# self.get_logger().info(f"{self.curr_mode}")
+		print(self.modes[self.curr_mode])
 		# Если нашли, что искали, переключаем режим
 		if self.is_found:
 			self.curr_mode += 1
@@ -82,7 +83,7 @@ class Detector(Node):
 			self.curr_template = self.images_path + self.modes[self.curr_mode]
 			self.is_found = False
 		
-		# self.get_logger().info(f"{self.curr_mode}")
+		
 
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
