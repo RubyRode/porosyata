@@ -490,11 +490,12 @@ class DetectLane(Node):
 
             self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
 
-    def main(self):
-        rclpy.spin()
-
 def main():
+
     rclpy.init()
     node = DetectLane()
-    rclpy.spin(node)
-
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.destroy_node()
+        rclpy.shutdown()

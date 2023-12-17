@@ -17,19 +17,16 @@ class ControlLane(Node):
             namespace='',
             parameters=[
             ("K_p", 0.0025),
-            ("K_i", 0.02),
             ("K_d", 0.007),
-            ("MAX_VEL", 0.3),
-            ("MAX_ANG", 0.3),
+            ("MAX_VEL", 0.5),
+            ("MAX_ANG", 0.5),
         ])
 
 
         self.K_p = self.get_parameter("K_p").get_parameter_value().double_value
-        self.K_i = self.get_parameter("K_i").get_parameter_value().double_value
         self.K_d = self.get_parameter("K_d").get_parameter_value().double_value
         self.I = 0
         self.lastError = 0
-        self.lastStamp = 0
         self.MAX_VEL = self.get_parameter("MAX_VEL").get_parameter_value().double_value
         self.MAX_ANG = self.get_parameter("MAX_ANG").get_parameter_value().double_value
 
@@ -39,27 +36,22 @@ class ControlLane(Node):
 
     def cbFollowLane(self, desired_center):
         center = desired_center.data
-        timestamp = desired_center.timestamp
         # self.get_logger().info(f"{center}")
         error = center - 484
 
 
-        Kp = 0.0025
-        Ki = 0.02
-        Kd = 0.007
+        Kp = 0.2
+        Kd = 0.7
 
-        d_t = (timestamp - self.lastStamp)
-        self.I = self.I + error * d_t
-
-        angular_z = self.K_p * error + self.I * self.K_i + self.K_d * (error - self.lastError) / d_t
+        angular_z = self.K_p * error +  self.K_d * (error - self.lastError) 
         # self.get_logger().info(f"{angular_z}")
         self.lastError = error
-        self.lastStamp = timestamp
         try:
             twist = Twist()
             # twist.linear.x = 0.05   
-            linear_x = float(self.MAX_VEL * ((1 - abs(error) / 484) ** 2.2))
-            self.get_logger().info(f"{linear_x}")   
+            # self.get_logger().info(f"{self.MAX_VEL * ((1 - abs(error) / 484) ** 2.2)}")
+            linear_x = float(self.MAX_VEL * ((1 - abs(error) / 484) ** 2))
+            # self.get_logger().info(f"{linear_x}")   
             twist.linear.x = linear_x
             twist.linear.y = 0.
             twist.linear.z = 0.
@@ -68,17 +60,19 @@ class ControlLane(Node):
             twist.angular.z = -max(angular_z * self.MAX_ANG, -2.0) if angular_z < 0 else -min(angular_z * self.MAX_ANG, 2.0)
             self.pub_cmd_vel.publish(twist)
         except TypeError as e:
+            self.get_logger().info(f"{self.MAX_VEL * ((1 - abs(error) / 484) ** 2.2)}")
+            self.get_logger().info(f"{self.MAX_VEL}, {abs(error)}")
             self.fnShutDown()
 
     def fnShutDown(self):
         self.get_logger().info("Shutting down. cmd_vel will be 0")
 
         twist = Twist()
-        self.pub_cmd_vel.publish(twist) 
+        self.pub_cmd_vel.publish(twist)
+        self.destroy_node() 
         rclpy.shutdown()
 
 
-    # def shutdown_callback():
 
 
 
@@ -89,4 +83,3 @@ def main():
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.fnShutDown()
-        rclpy.shutdown()    

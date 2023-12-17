@@ -16,7 +16,10 @@ class Detector(Node):
 			'/color/image',
 			self.snap_callback,
 			10)
-		self.subscription
+		self.publisher = self.create_publisher(
+			Image,
+			"/detect/signs",
+			1)
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
@@ -79,9 +82,12 @@ class Detector(Node):
 			self.curr_template = self.images_path + self.modes[self.curr_mode]
 			self.is_found = False
 		
-		print(self.curr_mode)
-		cv2.imshow('camera', img)
-		cv2.waitKey(1)
+		# self.get_logger().info(f"{self.curr_mode}")
+
+		send_img = self.br.cv2_to_imgmsg(img) 
+		self.publisher.publish(send_img)
+		# cv2.imshow('camera', img)
+		# cv2.waitKey(1)
 	
 	def detect_green(self, img):
 		lower = np.array([0, 40, 0], dtype="uint8")
@@ -120,13 +126,12 @@ class Detector(Node):
 def main(args=None):
 	cwd = os.getcwd()
 	rclpy.init(args=args)
-	
-	detector = Detector(cwd)
-	rclpy.spin(detector)
-	
-	detector.destroy_node()
-	rclpy.shutdown()
+	try:
+		detector = Detector(cwd)
+		rclpy.spin(detector)
+	except KeyboardInterrupt:
+		detector.destroy_node()
+		rclpy.shutdown()
 
-if __name__ == '__main__':
-	main()
+
 

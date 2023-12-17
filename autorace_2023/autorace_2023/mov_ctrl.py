@@ -307,6 +307,7 @@ class ControlMoving(Node):
         twist.angular.y = 0.
         twist.angular.z = 0.
         self.pub_cmd_vel.publish(twist) 
+        self.destroy_node()
         rclpy.shutdown()
 
 
@@ -317,4 +318,3 @@ def main():
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.fnShutDown()
-        rclpy.shutdown()
