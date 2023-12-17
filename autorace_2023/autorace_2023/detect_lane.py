@@ -6,8 +6,6 @@ from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import Image, CompressedImage
 from autorace_msgs.msg import TimeStampedFloat64
-# from dynamic_reconfigure.server import Server
-# from turtlebot3_autorace_detect.cfg import DetectLaneParamsConfig
 
 class DetectLane(Node):
     def __init__(self):
@@ -45,8 +43,6 @@ class DetectLane(Node):
         self.lightness_yellow_h = self.get_parameter("ylig_h").get_parameter_value().integer_value
 
         self.is_calibration_mode = self.get_parameter("is_calibrating").get_parameter_value().bool_value
-        # if self.is_calibration_mode == True:
-        #     srv_detect_lane = Server(DetectLaneParamsConfig, self.cbGetDetectLaneParam)
 
         self.sub_image_type = "raw"         # you can choose image type "compressed", "raw"
         self.pub_image_type = "compressed"  # you can choose image type "compressed", "raw"
@@ -93,42 +89,11 @@ class DetectLane(Node):
         self.reliability_white_line = 100
         self.reliability_yellow_line = 100
 
-    def cbGetDetectLaneParam(self, config, level):
-        self.get_logger().info("[Detect Lane] Detect Lane Calibration Parameter reconfigured to")
-        self.get_logger().info("hue_white_l : %d", config.hue_white_l)
-        self.get_logger().info("hue_white_h : %d", config.hue_white_h)
-        self.get_logger().info("saturation_white_l : %d", config.saturation_white_l)
-        self.get_logger().info("saturation_white_h : %d", config.saturation_white_h)
-        self.get_logger().info("lightness_white_l : %d", config.lightness_white_l)
-        self.get_logger().info("lightness_white_h : %d", config.lightness_white_h)
-        self.get_logger().info("hue_yellow_l : %d", config.hue_yellow_l)
-        self.get_logger().info("hue_yellow_h : %d", config.hue_yellow_h)
-        self.get_logger().info("saturation_yellow_l : %d", config.saturation_yellow_l)
-        self.get_logger().info("saturation_yellow_h : %d", config.saturation_yellow_h)
-        self.get_logger().info("lightness_yellow_l : %d", config.lightness_yellow_l)
-        self.get_logger().info("lightness_yellow_h : %d", config.lightness_yellow_h)
-
-        self.hue_white_l = config.hue_white_l
-        self.hue_white_h = config.hue_white_h
-        self.saturation_white_l = config.saturation_white_l
-        self.saturation_white_h = config.saturation_white_h
-        self.lightness_white_l = config.lightness_white_l
-        self.lightness_white_h = config.lightness_white_h
-
-        self.hue_yellow_l = config.hue_yellow_l
-        self.hue_yellow_h = config.hue_yellow_h
-        self.saturation_yellow_l = config.saturation_yellow_l
-        self.saturation_yellow_h = config.saturation_yellow_h
-        self.lightness_yellow_l = config.lightness_yellow_l
-        self.lightness_yellow_h = config.lightness_yellow_h
-
-        return config
-
     def cbFindLane(self, image_msg):
         # Change the frame rate by yourself. Now, it is set to 1/3 (10fps). 
         # Unappropriate value of frame rate may cause huge delay on entire recognition process.
         # This is up to your computer's operating power.
-        if self.counter % 3 != 0:
+        if self.counter % 2 != 0:
             self.counter += 1
             return
         else:
