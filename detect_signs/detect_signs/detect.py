@@ -6,6 +6,7 @@ import cv2
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
 from sensor_msgs.msg import Image
 
 class Detector(Node):
@@ -19,6 +20,10 @@ class Detector(Node):
 		self.publisher = self.create_publisher(
 			Image,
 			"/detect/signs",
+			1)
+		self.mode_publisher = self.create_publisher(
+			String, 
+			'/detect/signs/mode', 
 			1)
 		
 		# Связка OpenCV с ROS'овскими сообщениями
@@ -48,6 +53,9 @@ class Detector(Node):
 		# Текущий режим работы детектора
 		# (сначала фиксируем зеленый свет)
 		self.curr_mode = 0
+		# Сообщение, которое будем публиковать при нахождении того,
+		# что искали
+		self.mode_msg = String()
 		
 		# Работа с директориями
 		self.cwd = cwd
@@ -78,12 +86,13 @@ class Detector(Node):
 		print(self.modes[self.curr_mode])
 		# Если нашли, что искали, переключаем режим
 		if self.is_found:
+			self.mode_publisher.publish(self.mode_msg)
 			self.curr_mode += 1
 			self.curr_mode %= 14
 			self.curr_template = self.images_path + self.modes[self.curr_mode]
 			self.is_found = False
 		
-		
+		print(self.curr_mode)
 
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
@@ -98,6 +107,7 @@ class Detector(Node):
 		
 		if np.any(img_masked[279, 605] != 0):
 			self.is_found = True
+			self.mode_msg.data = str(self.curr_mode)
 	
 	def detect_sign(self, img, mode):
 		img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -110,6 +120,7 @@ class Detector(Node):
 		for pt in zip(*loc[::-1]):
 			if not self.is_found:
 				self.is_found = True
+				self.mode_msg.data = str(self.curr_mode)
 			cv2.rectangle(img, pt, (pt[0] + w, pt[1] + h), (255, 0, 150), 2)
 		return self.is_found
 	
@@ -121,6 +132,10 @@ class Detector(Node):
 		is_right = self.detect_sign(img, self.curr_mode + 1)
 		
 		if is_left or is_right:
+			if is_left:
+				self.mode_msg.data = str(self.curr_mode)
+			else:
+				self.mode_msg.data = str(self.curr_mode + 1)
 			self.curr_mode += 1
 		
 
