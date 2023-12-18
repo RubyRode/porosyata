@@ -14,32 +14,19 @@ class ImageCompensation(Node):
         self.sub_image_type = "raw"  # "compressed" / "raw"
         self.pub_image_type = "raw"  # "compressed" / "raw"
 
-        if self.sub_image_type == "compressed":
-            # subscribes compressed image 
-            self.sub_image_original = self.create_subscription(CompressedImage, '/color/image/compressed', self.cbImageCompensation, 1)
-        elif self.sub_image_type == "raw":
-            # subscribes raw image 
-            self.sub_image_original = self.create_subscription(Image, '/color/image', self.cbImageCompensation, 1)
+        
+        self.sub_image_original = self.create_subscription(Image, '/color/image', self.cbImageCompensation, 1)
 
-        if self.pub_image_type == "compressed":
-            # publishes compensated image in compressed type 
-            self.pub_image_compensated = self.create_publisher(CompressedImage, '/color/image_output/compressed', 1)
-        elif self.pub_image_type == "raw":
-            # publishes compensated image in raw type
-            self.pub_image_compensated = self.create_publisher(Image, '/color/image_output', 1)
+        
+        self.pub_image_compensated = self.create_publisher(Image, '/color/image/compensated', 1)
 
         self.cvBridge = CvBridge()
 
     def cbImageCompensation(self, msg_img):
         self.clip_hist_percent = self.get_parameter("clip_hist_percent").get_parameter_value().double_value
 
-        if self.sub_image_type == "compressed":
-            # converts compressed image to opencv image
-            np_image_original = np.frombuffer(msg_img.data, np.uint8)
-            cv_image_original = cv2.imdecode(np_image_original, cv2.IMREAD_COLOR)
-        elif self.sub_image_type == "raw":
-            # converts raw image to opencv image
-            cv_image_original = self.cvBridge.imgmsg_to_cv2(msg_img, "bgr8")
+
+        cv_image_original = self.cvBridge.imgmsg_to_cv2(msg_img, "bgr8")
 
         cv_image_compensated = np.copy(cv_image_original)
 
@@ -82,13 +69,8 @@ class ImageCompensation(Node):
 
         cv_image_compensated = cv2.convertScaleAbs(cv_image_compensated, -1, alpha, beta)
 
-        if self.pub_image_type == "compressed":
-            # publishes compensated image in compressed type
-            self.pub_image_compensated.publish(self.cvBridge.cv2_to_compressed_imgmsg(cv_image_compensated, "jpg"))
 
-        elif self.pub_image_type == "raw":
-            # publishes compensated image in raw type
-            self.pub_image_compensated.publish(self.cvBridge.cv2_to_imgmsg(cv_image_compensated, "bgr8"))
+        self.pub_image_compensated.publish(self.cvBridge.cv2_to_imgmsg(cv_image_compensated, "bgr8"))
 
 def main(args=None):
     rclpy.init(args=args)

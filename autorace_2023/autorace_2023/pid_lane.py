@@ -10,7 +10,6 @@ class ControlLane(Node):
         super().__init__("pid_lane")
 
         self.sub_lane = self.create_subscription(TimeStampedFloat64, '/detect/lane', self.cbFollowLane, 10)
-        # self.sub_max_vel = self.create_subscription(Float64, '/control/max_vel', self.cbGetMaxVel, 1)
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 1)
 
         self.declare_parameters(
@@ -25,8 +24,8 @@ class ControlLane(Node):
 
         self.K_p = self.get_parameter("K_p").get_parameter_value().double_value
         self.K_d = self.get_parameter("K_d").get_parameter_value().double_value
-        self.I = 0
         self.lastError = 0
+
         self.MAX_VEL = self.get_parameter("MAX_VEL").get_parameter_value().double_value
         self.MAX_ANG = self.get_parameter("MAX_ANG").get_parameter_value().double_value
 
@@ -35,15 +34,17 @@ class ControlLane(Node):
     #     self.MAX_VEL = max_vel_msg.data
 
     def cbFollowLane(self, desired_center):
+        self.K_p = self.get_parameter("K_p").get_parameter_value().double_value
+        self.K_d = self.get_parameter("K_d").get_parameter_value().double_value
+        self.MAX_VEL = self.get_parameter("MAX_VEL").get_parameter_value().double_value
+        self.MAX_ANG = self.get_parameter("MAX_ANG").get_parameter_value().double_value
         center = desired_center.data
+
         # self.get_logger().info(f"{center}")
         error = center - 484
 
 
-        Kp = 0.2
-        Kd = 0.7
-
-        angular_z = self.K_p * error +  self.K_d * (error - self.lastError) 
+        angular_z = self.K_p * error + self.K_d * (error - self.lastError)
         # self.get_logger().info(f"{angular_z}")
         self.lastError = error
         try:

@@ -12,7 +12,6 @@ from launch_ros.actions import SetParameter
 
 def generate_launch_description():
     
-    args = DeclareLaunchArgument('is_calibrating', default_value='True')
     
     config_comp = os.path.join(
       get_package_share_directory('autorace_camera'),
@@ -33,10 +32,7 @@ def generate_launch_description():
             namespace='camera',
             executable='image_compensation',
             name='image_compensation',
-            parameters=[config_comp,
-                        {"is_calibrating": LaunchConfiguration('is_calibrating')}],
-            remappings=[
-            ('/color/image_output', '/color/image_compensated')]
+            parameters=[config_comp],
       )
     
     node_projection = Node(
@@ -44,10 +40,8 @@ def generate_launch_description():
             namespace='camera',
             executable='image_projection',
             name='image_projection',
-            parameters=[config_proj,
-                        {"is_calibrating": LaunchConfiguration('is_calibrating')}],
-            remappings=[
-            ('/color/image_output', '/color/image_projected')]
+            parameters=[config_proj]
+ 
       )
     
     node_compensation_projection = Node(
@@ -55,15 +49,10 @@ def generate_launch_description():
             namespace='camera',
             executable='image_compensation',
             name='image_compensation_projection',
-            parameters=[config_comp,
-                        {"is_calibrating": LaunchConfiguration('is_calibrating')}],
-            remappings=[
-            ('/color/image', '/color/image_projected'),
-            ('/color/image_output', '/color/image_projected_compensated')]
+            parameters=[config_comp],
       )
     
-    ld = LaunchDescription([args,
-                          node_compensation,
+    ld = LaunchDescription([node_compensation,
                           node_projection,
                           node_compensation_projection,
                           SetParameter(name='use_sim_time', value=True)])

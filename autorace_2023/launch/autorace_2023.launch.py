@@ -26,11 +26,11 @@ def generate_launch_description():
     return LaunchDescription([
         bringup,
         camera,
-        Node(
-            package='autorace_2023',
-            executable='detect_lane',
-            name='lane_detection',
-        ),
+        # Node(
+        #     package='autorace_2023',
+        #     executable='detect_lane',
+        #     name='lane_detection',
+        # ),
         # Node(
         #     package="autorace_2023",
         #     executable="pid_lane",

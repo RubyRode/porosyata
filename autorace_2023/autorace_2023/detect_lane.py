@@ -15,16 +15,16 @@ class DetectLane(Node):
             namespace='',
             parameters=[
             ('whue_l', 0),
-            ('whue_h', 179),
+            ('whue_h', 0),
             ('wsat_l', 0),
-            ('wsat_h', 70),
-            ('wlig_l', 105),
+            ('wsat_h', 0),
+            ('wlig_l', 230),
             ('wlig_h', 255),
             ('yhue_l', 10),
-            ('yhue_h', 127),
-            ('ysat_l', 70),
+            ('yhue_h', 30),
+            ('ysat_l', 250),
             ('ysat_h', 255),
-            ('ylig_l', 95),
+            ('ylig_l', 250),
             ('ylig_h', 255),
             ('is_calibrating', False)
         ])
@@ -47,19 +47,11 @@ class DetectLane(Node):
         self.sub_image_type = "raw"         # you can choose image type "compressed", "raw"
         self.pub_image_type = "compressed"  # you can choose image type "compressed", "raw"
 
-        if self.sub_image_type == "compressed":
-            # subscribes compressed image
-            self.sub_image_original = self.create_subscription(CompressedImage, '/color/image_projected', self.cbFindLane, 1)
-        elif self.sub_image_type == "raw":
-            # subscribes raw image
-            self.sub_image_original = self.create_subscription(Image, '/color/image_projected', self.cbFindLane, 1)
+        # subscribes raw image
+        self.sub_image_original = self.create_subscription(Image, '/color/image/projected', self.cbFindLane, 1)
 
-        if self.pub_image_type == "compressed":
-            # publishes lane image in compressed type 
-            self.pub_image_lane = self.create_publisher(CompressedImage, '/detect/image_output/compressed', 1)
-        elif self.pub_image_type == "raw":
-            # publishes lane image in raw type
-            self.pub_image_lane = self.create_publisher(Image, '/color/image_projected_compensated', 1)
+        # publishes lane image in compressed type 
+        self.pub_image_lane = self.create_publisher(CompressedImage, '/detect/lane/compressed', 1)
 
         if self.is_calibration_mode == True:
             if self.pub_image_type == "compressed":
@@ -99,12 +91,7 @@ class DetectLane(Node):
         else:
             self.counter = 1
 
-        if self.sub_image_type == "compressed":
-            #converting compressed image to opencv image
-            np_arr = np.frombuffer(image_msg.data, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        elif self.sub_image_type == "raw":
-            cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
+        cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
         # find White and Yellow Lanes
         white_fraction, cv_white_lane = self.maskWhiteLane(cv_image)
@@ -148,12 +135,13 @@ class DetectLane(Node):
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = self.hue_white_l
-        Hue_h = self.hue_white_h
-        Saturation_l = self.saturation_white_l
-        Saturation_h = self.saturation_white_h
+        Hue_l = self.get_parameter("whue_l").get_parameter_value().integer_value
+        Hue_h = self.get_parameter("whue_h").get_parameter_value().integer_value
+        Saturation_l = self.get_parameter("wsat_l").get_parameter_value().integer_value
+        Saturation_h = self.get_parameter("wsat_h").get_parameter_value().integer_value
+        self.lightness_white_l = self.get_parameter("wlig_l").get_parameter_value().integer_value
         Lightness_l = self.lightness_white_l
-        Lightness_h = self.lightness_white_h
+        Lightness_h = self.get_parameter("wlig_h").get_parameter_value().integer_value
 
         # define range of white color in HSV
         lower_white = np.array([Hue_l, Saturation_l, Lightness_l])
@@ -195,13 +183,8 @@ class DetectLane(Node):
         self.pub_white_line_reliability.publish(msg_white_line_reliability)
 
         if self.is_calibration_mode == True:
-            if self.pub_image_type == "compressed":
-                # publishes white lane filtered image in compressed type
-                self.pub_image_white_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(mask, "jpg"))
-
-            elif self.pub_image_type == "raw":
-                # publishes white lane filtered image in raw type
-                self.pub_image_white_lane.publish(self.cvBridge.cv2_to_imgmsg(mask, "bgr8"))
+            # publishes white lane filtered image in compressed type
+            self.pub_image_white_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(mask, "jpg"))
 
         return fraction_num, mask
 
@@ -209,12 +192,13 @@ class DetectLane(Node):
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = self.hue_yellow_l
-        Hue_h = self.hue_yellow_h
-        Saturation_l = self.saturation_yellow_l
-        Saturation_h = self.saturation_yellow_h
+        Hue_l = self.get_parameter("yhue_l").get_parameter_value().integer_value
+        Hue_h = self.get_parameter("yhue_h").get_parameter_value().integer_value
+        Saturation_l = self.get_parameter("ysat_l").get_parameter_value().integer_value
+        Saturation_h = self.get_parameter("ysat_h").get_parameter_value().integer_value
+        self.lightness_yellow_l = self.get_parameter("ylig_l").get_parameter_value().integer_value
         Lightness_l = self.lightness_yellow_l
-        Lightness_h = self.lightness_yellow_h
+        Lightness_h = self.get_parameter("ylig_h").get_parameter_value().integer_value
 
         # define range of yellow color in HSV
         lower_yellow = np.array([Hue_l, Saturation_l, Lightness_l])
@@ -256,13 +240,8 @@ class DetectLane(Node):
         self.pub_yellow_line_reliability.publish(msg_yellow_line_reliability)
 
         if self.is_calibration_mode == True:
-            if self.pub_image_type == "compressed":
-                # publishes yellow lane filtered image in compressed type
-                self.pub_image_yellow_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(mask, "jpg"))
-
-            elif self.pub_image_type == "raw":
-                # publishes yellow lane filtered image in raw type
-                self.pub_image_yellow_lane.publish(self.cvBridge.cv2_to_imgmsg(mask, "bgr8"))
+            # publishes yellow lane filtered image in compressed type
+            self.pub_image_yellow_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(mask, "jpg"))
 
         return fraction_num, mask
 
@@ -429,31 +408,20 @@ class DetectLane(Node):
         final = cv2.addWeighted(cv_image, 1, color_warp, 0.2, 0)
         final = cv2.addWeighted(final, 1, color_warp_lines, 1, 0)
 
-        if self.pub_image_type == "compressed":
-            if self.is_center_x_exist == True:
-                # publishes lane center
-                msg_desired_center = TimeStampedFloat64()
-                msg_desired_center.data = centerx.item(350)
-                s, ns = self.get_clock().now().seconds_nanoseconds()
-                time = (s + ns * 0.000000001)
-                msg_desired_center.timestamp = time
-                self.pub_lane.publish(msg_desired_center)
+        if self.is_center_x_exist == True:
+            # publishes lane center
+            # self.get_logger().info(f"type: {type(centerx)}")
+            # self.get_logger().info(f"shape: {centerx.shape}")
+            # print(f"centerx: {centerx.shape}")
+            msg_desired_center = TimeStampedFloat64()
+            msg_desired_center.data = centerx.item(240)
+            print(f"center = {msg_desired_center.data}")
+            s, ns = self.get_clock().now().seconds_nanoseconds()
+            time = (s + ns * 0.000000001)
+            msg_desired_center.timestamp = time
+            self.pub_lane.publish(msg_desired_center)
 
-            self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
-
-        elif self.pub_image_type == "raw":
-            if self.is_center_x_exist == True:
-                # publishes lane center
-                self.get_logger().info(f"type: {type(centerx)}")
-                self.get_logger().info(f"shape: {centerx.shape}")
-                msg_desired_center = TimeStampedFloat64()
-                msg_desired_center.data = centerx.item(350)
-                s, ns = self.get_clock().now().seconds_nanoseconds()
-                time = (s + ns * 0.000000001)
-                msg_desired_center.timestamp = time
-                self.pub_lane.publish(msg_desired_center)
-
-            self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+        self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
 
 def main():
 
