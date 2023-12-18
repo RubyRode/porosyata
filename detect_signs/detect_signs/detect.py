@@ -12,10 +12,10 @@ from sensor_msgs.msg import Image
 class Detector(Node):
 	def __init__(self, cwd):
 		super().__init__('snap_subscriber')
-		self.subscription = self.create_subscription(
+		self.img_subscription = self.create_subscription(
 			Image,
 			'/color/image',
-			self.snap_callback,
+			self.img_callback,
 			10)
 		self.publisher = self.create_publisher(
 			Image,
@@ -25,9 +25,6 @@ class Detector(Node):
 			String, 
 			'/detect/signs/mode', 
 			1)
-		
-		# Связка OpenCV с ROS'овскими сообщениями
-		self.br = CvBridge()
 		
 		# Флаг, нашли ли то, что искали
 		self.is_found = False
@@ -56,14 +53,18 @@ class Detector(Node):
 		# Сообщение, которое будем публиковать при нахождении того,
 		# что искали
 		self.mode_msg = String()
+		# Сообщение, которое будем получать с камеры глубины
 		
 		# Работа с директориями
 		self.cwd = cwd
 		self.images_path = self.cwd + '/src/porosyata/detect_signs/images'
 		self.curr_frame_path = self.images_path + '/curr_frame.png'
 		self.curr_template = self.images_path + self.modes[self.curr_mode]
+		
+		# Связка OpenCV с ROS'овскими сообщениями
+		self.br = CvBridge()
 	
-	def snap_callback(self, msg):
+	def img_callback(self, msg):
 		# Фиксируем текущий кадр
 		img = self.br.imgmsg_to_cv2(msg)
 		img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -77,7 +78,11 @@ class Detector(Node):
 		# (выбор между двумя вариантами)
 		elif self.curr_mode == 2 or self.curr_mode == 7:
 			self.choose_from_two(img)
-		elif self.curr_mode == 5 or self.curr_mode == 9 or self.curr_mode == 11:
+		# Ищем пешехода перед машиной
+		elif self.curr_mode == 11:
+			self.detect_pedestrian(img)
+		# Заглушка
+		elif self.curr_mode == 5 or self.curr_mode == 9:
 			self.curr_mode += 1
 		# Просто поиск знаков
 		else:
@@ -91,11 +96,10 @@ class Detector(Node):
 			self.curr_mode %= 14
 			self.curr_template = self.images_path + self.modes[self.curr_mode]
 			self.is_found = False
-		
-		print(self.curr_mode)
 
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
+		
 		# cv2.imshow('camera', img)
 		# cv2.waitKey(1)
 	
@@ -137,7 +141,15 @@ class Detector(Node):
 			else:
 				self.mode_msg.data = str(self.curr_mode + 1)
 			self.curr_mode += 1
+	
+	def detect_pedestrian(self, img):
+		row = 99
+		left = 330
+		right = 520
 		
+		if np.all(img[row, 330:520] == img[row, 330]):
+			self.is_found = True
+			self.mode_msg.data = str(self.curr_mode)
 
 def main(args=None):
 	cwd = os.getcwd()
