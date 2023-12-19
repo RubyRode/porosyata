@@ -26,7 +26,7 @@ class DetectLane(Node):
             ('ysat_h', 255),
             ('ylig_l', 250),
             ('ylig_h', 255),
-            ('pivot_point', 300),
+            ('pivot_point', 320),
             ('is_calibrating', True)
         ])
         self.hue_white_l = self.get_parameter("whue_l").get_parameter_value().integer_value
@@ -75,9 +75,9 @@ class DetectLane(Node):
         self.cvBridge = CvBridge()
 
         self.counter = 1
-
-        self.window_width = 848
-        self.window_height = 480
+        self.pivot_point = self.get_parameter("pivot_point").get_parameter_value().integer_value
+        self.window_width = 848.
+        self.window_height = 480.
 
         self.reliability_white_line = 100
         self.reliability_yellow_line = 100
@@ -99,19 +99,19 @@ class DetectLane(Node):
         yellow_fraction, cv_yellow_lane = self.maskYellowLane(cv_image)
 
         try:
-            if yellow_fraction > 3000:
+            if yellow_fraction > 1000:
                 self.left_fitx, self.left_fit = self.fit_from_lines(self.left_fit, cv_yellow_lane)
                 self.mov_avg_left = np.append(self.mov_avg_left,np.array([self.left_fit]), axis=0)
 
-            if white_fraction > 3000:
+            if white_fraction > 1000:
                 self.right_fitx, self.right_fit = self.fit_from_lines(self.right_fit, cv_white_lane)
                 self.mov_avg_right = np.append(self.mov_avg_right,np.array([self.right_fit]), axis=0)
         except:
-            if yellow_fraction > 3000:
+            if yellow_fraction > 1000:
                 self.left_fitx, self.left_fit = self.sliding_windown(cv_yellow_lane, 'left')
                 self.mov_avg_left = np.array([self.left_fit])
 
-            if white_fraction > 3000:
+            if white_fraction > 1000:
                 self.right_fitx, self.right_fit = self.sliding_windown(cv_white_lane, 'right')
                 self.mov_avg_right = np.array([self.right_fit])
 
@@ -156,17 +156,17 @@ class DetectLane(Node):
 
         fraction_num = np.count_nonzero(mask)
 
-        # if self.is_calibration_mode == False:
-        #     if fraction_num > 35000:
-        #         if self.lightness_white_l < 250:
-        #             self.lightness_white_l += 5
-        #     elif fraction_num < 5000:
-        #         if self.lightness_white_l > 50:
-        #             self.lightness_white_l -= 5
+        if True:
+            if fraction_num > 35000:
+                if self.lightness_white_l < 250:
+                    self.lightness_white_l += 5
+            elif fraction_num < 5000:
+                if self.lightness_white_l > 50:
+                    self.lightness_white_l -= 5
 
         how_much_short = 0
 
-        for i in range(0, self.window_height):
+        for i in range(0, int(self.window_height)):
             if np.count_nonzero(mask[i,::]) > 0:
                 how_much_short += 1
 
@@ -213,17 +213,17 @@ class DetectLane(Node):
 
         fraction_num = np.count_nonzero(mask)
 
-        # if self.is_calibration_mode == False:
-        #     if fraction_num > 35000:
-        #         if self.lightness_yellow_l < 250:
-        #             self.lightness_yellow_l += 20
-        #     elif fraction_num < 5000:
-        #         if self.lightness_yellow_l > 90:
-        #             self.lightness_yellow_l -= 20
+        if True:
+            if fraction_num > 35000:
+                if self.lightness_yellow_l < 250:
+                    self.lightness_yellow_l += 20
+            elif fraction_num < 5000:
+                if self.lightness_yellow_l > 90:
+                    self.lightness_yellow_l -= 20
 
         how_much_short = 0
 
-        for i in range(0, self.window_height):
+        for i in range(0, int(self.window_height)):
             if np.count_nonzero(mask[i,::]) > 0:
                 how_much_short += 1
         
@@ -356,18 +356,18 @@ class DetectLane(Node):
 
         ploty = np.linspace(0, cv_image.shape[0] - 1, cv_image.shape[0])
 
-        if yellow_fraction > 3000:
+        if yellow_fraction > 1000:
             pts_left = np.array([np.flipud(np.transpose(np.vstack([self.left_fitx, ploty])))])
             cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=20)
 
-        if white_fraction > 3000:
+        if white_fraction > 1000:
             pts_right = np.array([np.transpose(np.vstack([self.right_fitx, ploty]))])
             cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=20)
         
         self.is_center_x_exist = True
 
-        if self.reliability_white_line > 40 and self.reliability_yellow_line > 40:   
-            if white_fraction > 3000 and yellow_fraction > 3000:
+        if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
+            if white_fraction > 1000 and yellow_fraction > 1000:
                 centerx = np.mean([self.left_fitx, self.right_fitx], axis=0)
                 pts = np.hstack((pts_left, pts_right))
                 pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
@@ -377,26 +377,26 @@ class DetectLane(Node):
                 # Draw the lane onto the warped blank image
                 cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
-            if white_fraction > 3000 and yellow_fraction <= 3000:
-                centerx = np.subtract(self.right_fitx, 320)
+            if white_fraction > 1000 and yellow_fraction <= 1000:
+                centerx = np.subtract(self.right_fitx, self.pivot_point)
                 pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
                 cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
-            if white_fraction <= 3000 and yellow_fraction > 3000:
-                centerx = np.add(self.left_fitx, 320)
+            if white_fraction <= 1000 and yellow_fraction > 1000:
+                centerx = np.add(self.left_fitx, self.pivot_point)
                 pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
                 cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
-        elif self.reliability_white_line <= 40 and self.reliability_yellow_line > 40:
-            centerx = np.add(self.left_fitx, 320)
+        elif self.reliability_white_line <= 50 and self.reliability_yellow_line > 50:
+            centerx = np.add(self.left_fitx, self.pivot_point)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
-        elif self.reliability_white_line > 40 and self.reliability_yellow_line <= 40:
-            centerx = np.subtract(self.right_fitx, 320)
+        elif self.reliability_white_line > 50 and self.reliability_yellow_line <= 50:
+            centerx = np.subtract(self.right_fitx, self.pivot_point)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
@@ -408,13 +408,13 @@ class DetectLane(Node):
         # Combine the result with the original image
         final = cv2.addWeighted(cv_image, 1, color_warp, 0.2, 0)
         final = cv2.addWeighted(final, 1, color_warp_lines, 1, 0)
-        pivot_point = self.get_parameter("pivot_point").get_parameter_value().integer_value
+        self.pivot_point = self.get_parameter("pivot_point").get_parameter_value().integer_value
         
         if self.is_center_x_exist == True:
             # publishes lane center
             msg_desired_center = Float64()
-            msg_desired_center.data = centerx.item(pivot_point)
-            final = cv2.circle(final, (int(centerx.item(pivot_point)), pivot_point), radius=12, color=(0, 0, 0),
+            msg_desired_center.data = centerx.item(self.pivot_point)
+            final = cv2.circle(final, (int(centerx.item(self.pivot_point)), self.pivot_point), radius=12, color=(0, 0, 0),
                                 thickness=-12)
             self.pub_lane.publish(msg_desired_center)
 

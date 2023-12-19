@@ -33,10 +33,7 @@ class Pid(Node):
 		
 		# Работа с директориями
 		self.cwd = cwd
-<<<<<<< HEAD:autorace_2023/autorace_2023/pid_pixels.py
-=======
 		self.images_path = self.cwd + '/src/porosyata/detect_signs/images'
->>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e:detect_signs/detect_signs/pid.py
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
@@ -62,7 +59,6 @@ class Pid(Node):
 		
 		num_yellow_pixels = np.count_nonzero(yellow_color) + 1
 		num_white_pixels = np.count_nonzero(white_color) + 1
-<<<<<<< HEAD:autorace_2023/autorace_2023/pid_pixels.py
 		send_msg = Twist()
 		woy = num_white_pixels/num_yellow_pixels
 		yow = num_yellow_pixels/num_white_pixels
@@ -74,25 +70,20 @@ class Pid(Node):
 			send_msg.linear.x = 0.5
 			send_msg.angular.z = -0.8
 			# self.angular.data = 'left'
-=======
 		
 		if num_white_pixels/num_yellow_pixels > 6:
 			self.angular.data = 'left'
 		elif num_yellow_pixels/num_white_pixels > 6:
 			self.angular.data = 'right'
->>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e:detect_signs/detect_signs/pid.py
 		else:
 			send_msg.linear.x = 0.5
 			send_msg.angular.z = 0.8
 			# self.angular.data = 'right'
 		
 		# print(num_white_pixels/num_yellow_pixels)
-<<<<<<< HEAD:autorace_2023/autorace_2023/pid_pixels.py
 		if self.switch == 1:
 			self.cmd_vel_publisher.publish(send_msg)
-=======
 		self.angular_publisher.publish(self.angular)
->>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e:detect_signs/detect_signs/pid.py
 		
 		# whole_color = cv2.bitwise_or(yellow_color, white_color)
 		# cv2.rectangle(whole_color, (100, 100), (200, 200), signal_color, 2)

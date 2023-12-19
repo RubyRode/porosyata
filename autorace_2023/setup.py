@@ -26,13 +26,8 @@ setup(
             "detect = autorace_2023.detect:main",
             "detect_lane = autorace_2023.detect_lane:main",
             "pid_lane = autorace_2023.pid_lane:main",
-<<<<<<< HEAD
             "pid_pixels = autorace_2023.pid_pixels:main",
 
-=======
-            "pixels = autorace_2023.pixels:main",
-            "control = autorace_2023.control:main",
->>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e
         ],
     },
 )

@@ -30,7 +30,6 @@ class Detector(Node):
 		self.is_found = False
 		# Режимы работы детектора
 		self.modes = {
-			-1: ('start_mode', -1),
 			0: ('looking for some green lantern', 0),
 			1: ('/templates/intersection.png', 1),
 			2: ('/templates/turn_left.png', 2),
@@ -78,14 +77,46 @@ class Detector(Node):
 			case 0: 
 				if self.detect_green(img):
 					self.curr_mode = 1
-					mode_msg.data = 1
-				else:
-					mode_msg.data = 0
-				
 			case 1:
-				...
+				if self.detect_sign(img):
+					self.curr_mode = 2
+			case 2:
+				is_found, is_left = self.choose_from_two(img)
+				if is_found
+					self.curr_mode = 4
+			case 4:
+				if self.detect_sign(img):
+					self.curr_mode = 5
+			case 5:
+				# hardcode blocks
+				self.curr_mode = 6
+			case 6:
+				if self.detect_sign(img):
+					self.curr_mode = 7
+			case 7:
+				if self.choose_from_two(img):
+					self.curr_mode = 9
+			case 9:
+				# hardcode parking
+				self.curr_mode = 10
+			case 10:
+				if self.detect_sign(img):
+					self.curr_mode = 11
+			case 11:
+				if self.detect_pedestrian(img):
+					self.curr_mode = 12
+			case 12:
+				if self.detect_sign(img):
+					self.curr_mode = 13
+			case 13:
+				# hardcode slam
+				self.curr_mode = 14
+			case 14:
+				self.curr_mode = self.curr_mode
+		mode_msg.data = self.curr_mode
 		self.mode_publisher.publish(mode_msg)
-		# self.get_logger().info(f"/detect/signs/mode: {mode_msg.data}")
+		# self.get_logger().info(f"/detect/signs/mode: {mode_msg.data}, {self.curr_mode}")
+
 
 
 		# if self.curr_mode == 0:
@@ -122,10 +153,11 @@ class Detector(Node):
 		upper = np.array([10, 255, 10], dtype="uint8")
 		green_mask = cv2.inRange(img, lower, upper)
 		img_masked = cv2.bitwise_and(img, img, mask=green_mask)
-		cv2.imshow("sudhfkjsd", img_masked)
-		cv2.waitKey(1)
+		# cv2.imshow("sudhfkjsd", img_masked)
+		# cv2.waitKey(1)
 		if np.any(img_masked[279, 605] != 0):
 			return True
+
 		return False
 	
 	def detect_sign(self, img, mode):
@@ -136,12 +168,14 @@ class Detector(Node):
 		res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
 		threshold = 0.8
 		loc = np.where(res >= threshold)
+		if len(loc) > 0:
+			is_found = True
+			mode_msg.data = str(self.curr_mode)
+		else:
+			is_found = False
 		for pt in zip(*loc[::-1]):
-			if not self.is_found:
-				self.is_found = True
-				self.mode_msg.data = str(self.curr_mode)
 			cv2.rectangle(img, pt, (pt[0] + w, pt[1] + h), (255, 0, 150), 2)
-		return self.is_found
+		return is_found
 	
 	def choose_from_two(self, img):
 		is_left = False
@@ -155,7 +189,9 @@ class Detector(Node):
 				self.mode_msg.data = str(self.curr_mode)
 			else:
 				self.mode_msg.data = str(self.curr_mode + 1)
-			self.curr_mode += 1
+			return True, is_left
+
+		return False, False
 	
 	def detect_pedestrian(self, img):
 		row = 99
@@ -163,8 +199,10 @@ class Detector(Node):
 		right = 520
 		
 		if np.all(img[row, 330:520] == img[row, 330]):
-			self.is_found = True
 			self.mode_msg.data = str(self.curr_mode)
+			return True
+
+		return False
 
 def main(args=None):
 	cwd = os.getcwd()
