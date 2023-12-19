@@ -1,6 +1,6 @@
 import rclpy
 import numpy as np
-from std_msgs.msg import Float64, String
+from std_msgs.msg import Float64, String, UInt8, Int8
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from autorace_msgs.msg import PidGraph
@@ -12,8 +12,8 @@ class ControlLane(Node):
 
         self.sub_lane = self.create_subscription(Float64, '/detect/lane', self.cbFollowLane, 1)
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 1)
-        self.pub_plot_error = self.create_publisher(PidGraph, '/detect/plot', 1)
-        # self.sub_mode = self.create_subscription(String, "/detect/signs/mode", self.changeMode, 1)
+        # self.pub_plot_error = self.create_publisher(PidGraph, '/detect/plot', 1)
+        self.sub_mode = self.create_subscription(Int8, "/control/mover", self.changeMode, 1)
 
         self.K_p_p = self.declare_parameter("K_p", 130, 
             ParameterDescriptor(type=ParameterType.PARAMETER_INTEGER,
@@ -39,10 +39,14 @@ class ControlLane(Node):
         self.max_ang = 1
         self.MAX_VEL = self.get_parameter("MAX_VEL").get_parameter_value().integer_value / 10
         self.MAX_ANG = self.get_parameter("MAX_ANG").get_parameter_value().integer_value / 10
+        self.switch = 0 
 
 
-    # def cbGetMaxVel(self, max_vel_msg):
-    #     self.MAX_VEL = max_vel_msg.data
+    def changeMode(self, msg):
+        if msg.data == 1:
+            self.switch = 1
+        else:
+            self.switch = 0
 
     def cbFollowLane(self, desired_center):
         self.K_p = self.get_parameter("K_p").get_parameter_value().integer_value / 10000
@@ -59,10 +63,10 @@ class ControlLane(Node):
 
         angular_z = (self.K_p * error + self.I * self.K_i + self.K_d * (error - self.lastError) * 100) / self.max_ang
         self.max_ang = angular_z if angular_z > self.max_ang else self.max_ang
-        err_msg = PidGraph()
-        err_msg.x = -max(angular_z * self.MAX_ANG, -2.0) if angular_z < 0 else -min(angular_z * self.MAX_ANG, 2.0)
-        err_msg.y = 0.
-        self.pub_plot_error.publish(err_msg)
+        # err_msg = PidGraph()
+        # err_msg.x = -max(angular_z * self.MAX_ANG, -2.0) if angular_z < 0 else -min(angular_z * self.MAX_ANG, 2.0)
+        # err_msg.y = 0.
+        # self.pub_plot_error.publish(err_msg)
         self.lastError = error
         try:
             twist = Twist()
@@ -73,7 +77,8 @@ class ControlLane(Node):
             twist.angular.x = 0.
             twist.angular.y = 0.
             twist.angular.z = -max(angular_z * self.MAX_ANG, -2.0) if angular_z < 0 else -min(angular_z * self.MAX_ANG, 2.0)
-            self.pub_cmd_vel.publish(twist)
+            if self.switch == 1:
+                self.pub_cmd_vel.publish(twist)
         except TypeError as e:
             self.get_logger().info(f"{self.MAX_VEL * ((1 - abs(error) / 484) ** 2.2)}")
             self.get_logger().info(f"{self.MAX_VEL}, {abs(error)}")

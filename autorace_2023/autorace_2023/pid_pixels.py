@@ -6,8 +6,9 @@ import cv2
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt8, Int8
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Twist
 
 class Pid(Node):
 	def __init__(self, cwd):
@@ -17,20 +18,30 @@ class Pid(Node):
 			'/color/image/projected',
 			self.img_callback,
 			10)
-		self.angular_publisher = self.create_publisher(
-			String,
-			'/detect/pid_angular',
+		self.cmd_vel_publisher = self.create_publisher(
+			Twist,
+			'/cmd_vel',
 			1)
-		
-		self.angular = String()
+		self.sub_mode = self.create_subscription(
+			Int8, 
+			"/control/mover", 
+			self.changeMode, 
+			1)
+
+
+		self.switch = 0
 		
 		# Работа с директориями
 		self.cwd = cwd
-		self.images_path = self.cwd + '/src/porosyata/detect_signs/images'
-		self.projected_path = self.images_path + '/projected.png'
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
+
+	def changeMode(self, msg):
+		if msg.data == 0:
+			self.switch = 1
+		else:
+			self.switch = 0
 	
 	def img_callback(self, msg):
 		# Фиксируем текущий кадр
@@ -47,16 +58,25 @@ class Pid(Node):
 		
 		num_yellow_pixels = np.count_nonzero(yellow_color) + 1
 		num_white_pixels = np.count_nonzero(white_color) + 1
-		
-		if num_white_pixels/num_yellow_pixels > 5000:
-			self.angular.data = 'left'
-		elif num_yellow_pixels/num_white_pixels > 5000:
-			self.angular.data = 'right'
+		send_msg = Twist()
+		woy = num_white_pixels/num_yellow_pixels
+		yow = num_yellow_pixels/num_white_pixels
+		alpha = 0.8
+		if alpha <= woy <= woy + 20 and alpha <= yow <= yow + 20:
+			send_msg.linear.x = 0.7 # forward
+			# self.angular.data = 'forward'
+		elif yow < alpha and woy > 20:
+			send_msg.linear.x = 0.5
+			send_msg.angular.z = -0.8
+			# self.angular.data = 'left'
 		else:
-			self.angular.data = 'forward'
+			send_msg.linear.x = 0.5
+			send_msg.angular.z = 0.8
+			# self.angular.data = 'right'
 		
-		print(num_white_pixels/num_yellow_pixels)
-		self.angular_publisher.publish(self.angular)
+		# print(num_white_pixels/num_yellow_pixels)
+		if self.switch == 1:
+			self.cmd_vel_publisher.publish(send_msg)
 		
 		# whole_color = cv2.bitwise_or(yellow_color, white_color)
 		# cv2.rectangle(whole_color, (100, 100), (200, 200), signal_color, 2)

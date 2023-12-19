@@ -6,7 +6,7 @@ import cv2
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Int8, Int8
 from sensor_msgs.msg import Image
 
 class Detector(Node):
@@ -22,7 +22,7 @@ class Detector(Node):
 			"/detect/signs",
 			1)
 		self.mode_publisher = self.create_publisher(
-			String, 
+			Int8, 
 			'/detect/signs/mode', 
 			1)
 		
@@ -30,21 +30,22 @@ class Detector(Node):
 		self.is_found = False
 		# Режимы работы детектора
 		self.modes = {
-			0: 'looking for some green lantern',
-			1: '/templates/intersection.png',
-			2: '/templates/turn_left.png',
-			3: '/templates/turn_right.png',
-			4: '/templates/blocks.png',
-			5: 'going through some blocks',
-			6: '/templates/parking.png',
-			7: '/templates/car_left.png',
-			8: '/templates/car_right.png',
-			9: 'ryan gosling parking',
-			10: '/templates/zebra.png',
-			11: 'looking for some knight',
-			12: '/templates/tunnel.png',
-			13: 'looking for some slam',
-			14: 'finish'
+			-1: ('start_mode', -1),
+			0: ('looking for some green lantern', 0),
+			1: ('/templates/intersection.png', 1),
+			2: ('/templates/turn_left.png', 2),
+			3: ('/templates/turn_right.png', 3),
+			4: ('/templates/blocks.png', 4),
+			5: ('going through some blocks', 5),
+			6: ('/templates/parking.png', 6),
+			7: ('/templates/car_left.png', 7),
+			8: ('/templates/car_right.png', 8),
+ 			9: ('ryan gosling parking', 9),
+			10: ('/templates/zebra.png', 10),
+			11: ('looking for some knight', 11),
+			12: ('/templates/tunnel.png', 12),
+			13: ('looking for some slam', 13),
+			14: ('finish', 14),
 			
 		}
 		# Текущий режим работы детектора
@@ -57,9 +58,9 @@ class Detector(Node):
 		
 		# Работа с директориями
 		self.cwd = cwd
-		self.images_path = self.cwd + '/src/porosyata/detect_signs/images'
+		self.images_path = self.cwd + '/src/porosyata/autorace_2023/images'
 		self.curr_frame_path = self.images_path + '/curr_frame.png'
-		self.curr_template = self.images_path + self.modes[self.curr_mode]
+		self.curr_template = self.images_path + self.modes[self.curr_mode][0]
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
@@ -69,49 +70,63 @@ class Detector(Node):
 		img = self.br.imgmsg_to_cv2(msg)
 		img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 		# Записываем его (потом уберу запись, скорее всего)
-		cv2.imwrite(self.curr_frame_path, img)
+		# cv2.imwrite(self.curr_frame_path, img)
 		
 		# Зеленый свет
-		if self.curr_mode == 0:
-			self.detect_green(img)
-		# Выбор направления поворота или места на парковке
-		# (выбор между двумя вариантами)
-		elif self.curr_mode == 2 or self.curr_mode == 7:
-			self.choose_from_two(img)
-		# Ищем пешехода перед машиной
-		elif self.curr_mode == 11:
-			self.detect_pedestrian(img)
-		# Заглушка
-		elif self.curr_mode == 5 or self.curr_mode == 9:
-			self.curr_mode += 1
-		# Просто поиск знаков
-		else:
-			self.detect_sign(img, self.curr_mode)
-		# self.get_logger().info(f"{self.curr_mode}")
-		print(self.modes[self.curr_mode])
-		# Если нашли, что искали, переключаем режим
-		if self.is_found:
-			self.mode_publisher.publish(self.mode_msg)
-			self.curr_mode += 1
-			self.curr_mode %= 14
-			self.curr_template = self.images_path + self.modes[self.curr_mode]
-			self.is_found = False
+		mode_msg = Int8()
+		match self.curr_mode:
+			case 0: 
+				if self.detect_green(img):
+					self.curr_mode = 1
+					mode_msg.data = 1
+				else:
+					mode_msg.data = 0
+				
+			case 1:
+				...
+		self.mode_publisher.publish(mode_msg)
+		# self.get_logger().info(f"/detect/signs/mode: {mode_msg.data}")
+
+
+		# if self.curr_mode == 0:
+		# 	self.detect_green(img)
+		# # Выбор направления поворота или места на парковке
+		# # (выбор между двумя вариантами)
+		# elif self.curr_mode == 2 or self.curr_mode == 7:
+		# 	self.choose_from_two(img)
+		# # Ищем пешехода перед машиной
+		# elif self.curr_mode == 11:
+		# 	self.detect_pedestrian(img)
+		# # Заглушка
+		# elif self.curr_mode == 5 or self.curr_mode == 9:
+		# 	self.curr_mode += 1
+		# # Просто поиск знаков
+		# else:
+		# 	self.detect_sign(img, self.curr_mode)
+		# # self.get_logger().info(f"{self.curr_mode}")
+		# print(self.modes[self.curr_mode])
+		# # Если нашли, что искали, переключаем режим
+		# if self.is_found:
+		# 	self.mode_publisher.publish(self.mode_msg)
+		# 	self.curr_mode += 1
+		# 	self.curr_mode %= 14
+		# 	self.curr_template = self.images_path + self.modes[self.curr_mode]
+		# 	self.is_found = False
 
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
 		
-		# cv2.imshow('camera', img)
-		# cv2.waitKey(1)
 	
 	def detect_green(self, img):
 		lower = np.array([0, 40, 0], dtype="uint8")
 		upper = np.array([10, 255, 10], dtype="uint8")
 		green_mask = cv2.inRange(img, lower, upper)
 		img_masked = cv2.bitwise_and(img, img, mask=green_mask)
-		
+		cv2.imshow("sudhfkjsd", img_masked)
+		cv2.waitKey(1)
 		if np.any(img_masked[279, 605] != 0):
-			self.is_found = True
-			self.mode_msg.data = str(self.curr_mode)
+			return True
+		return False
 	
 	def detect_sign(self, img, mode):
 		img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
