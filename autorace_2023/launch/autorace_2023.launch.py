@@ -27,6 +27,7 @@ def generate_launch_description():
         bringup,
         camera,
         Node(
+<<<<<<< HEAD
             package="autorace_2023",
             executable="detect",
             name="sign_detection",
@@ -37,6 +38,8 @@ def generate_launch_description():
             name="control"
         ),
         Node(
+=======
+>>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e
             package='autorace_2023',
             executable='detect_lane',
             name='lane_detection',
@@ -46,18 +49,44 @@ def generate_launch_description():
             executable="pid_lane",
             name="PID",
         ),
+<<<<<<< HEAD
         Node(
             package="autorace_2023",
             executable="pid_pixels",
             name="pid_pixels",
         ),   
+=======
+>>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e
         Node(
             package="referee_console",
             executable="mission_autorace_2023_referee",
             name="referee"
         ),
+<<<<<<< HEAD
         
         
         
+=======
+        Node(
+            package="detect_signs",
+            executable="detect",
+            name="sign_detection",
+        ),
+        Node(
+            package="autorace_2023",
+            executable="pixels",
+            name="pxls"
+        ),
+        Node(
+            package="detect_signs",
+            executable="pid",
+            name="pid_signs",
+        ),
+        Node(
+            package="autorace_2023",
+            executable="control",
+            name="control"
+        )
+>>>>>>> 2f6bc480e01e5b6c1bde471b4555c10cf351eb6e
 
     ])
