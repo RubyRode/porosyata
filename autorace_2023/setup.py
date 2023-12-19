@@ -27,7 +27,7 @@ setup(
             "detect_lane = autorace_2023.detect_lane:main",
             "pid_lane = autorace_2023.pid_lane:main",
             "pid_pixels = autorace_2023.pid_pixels:main",
-
+            "special = autorace_2023.special:main",
         ],
     },
 )

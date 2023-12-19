@@ -29,12 +29,13 @@ class Controller(Node):
 		curr_mode = msg.data
 		self.get_logger().info(f"control_curr_mode {curr_mode}")
 		mover_msg = Int8()
-		if curr_mode in [1, 4, 6]:
+		if curr_mode in [1, 5, 6]:
 			mover_msg.data = 1
-		elif curr_mode in [2]:
+		elif curr_mode in [4]:
 			mover_msg.data = 0
 		else:
 			mover_msg.data = -1
+			# special parts
 		self.mover_publisher.publish(mover_msg)
 
 
