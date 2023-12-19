@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
         	'detect = detect_signs.detect:main',
+            'pid = detect_signs.pid:main',
         ],
     },
 )

@@ -26,7 +26,8 @@ class DetectLane(Node):
             ('ysat_h', 255),
             ('ylig_l', 250),
             ('ylig_h', 255),
-            ('is_calibrating', False)
+            ('pivot_point', 300),
+            ('is_calibrating', True)
         ])
         self.hue_white_l = self.get_parameter("whue_l").get_parameter_value().integer_value
         self.hue_white_h = self.get_parameter("whue_h").get_parameter_value().integer_value
@@ -63,7 +64,7 @@ class DetectLane(Node):
                 self.pub_image_white_lane = self.create_publisher(Image, '/detect/image_output_sub1', 1)
                 self.pub_image_yellow_lane = self.create_publisher(Image, '/detect/image_output_sub2', 1)
 
-        self.pub_lane = self.create_publisher(TimeStampedFloat64, '/detect/lane', 1)
+        self.pub_lane = self.create_publisher(Float64, '/detect/lane', 1)
 
         # subscribes state : yellow line reliability
         self.pub_yellow_line_reliability = self.create_publisher(UInt8, '/detect/yellow_line_reliability', 1)
@@ -85,7 +86,7 @@ class DetectLane(Node):
         # Change the frame rate by yourself. Now, it is set to 1/3 (10fps). 
         # Unappropriate value of frame rate may cause huge delay on entire recognition process.
         # This is up to your computer's operating power.
-        if self.counter % 2 != 0:
+        if self.counter % 1 != 0:
             self.counter += 1
             return
         else:
@@ -155,13 +156,13 @@ class DetectLane(Node):
 
         fraction_num = np.count_nonzero(mask)
 
-        if self.is_calibration_mode == False:
-            if fraction_num > 35000:
-                if self.lightness_white_l < 250:
-                    self.lightness_white_l += 5
-            elif fraction_num < 5000:
-                if self.lightness_white_l > 50:
-                    self.lightness_white_l -= 5
+        # if self.is_calibration_mode == False:
+        #     if fraction_num > 35000:
+        #         if self.lightness_white_l < 250:
+        #             self.lightness_white_l += 5
+        #     elif fraction_num < 5000:
+        #         if self.lightness_white_l > 50:
+        #             self.lightness_white_l -= 5
 
         how_much_short = 0
 
@@ -212,13 +213,13 @@ class DetectLane(Node):
 
         fraction_num = np.count_nonzero(mask)
 
-        if self.is_calibration_mode == False:
-            if fraction_num > 35000:
-                if self.lightness_yellow_l < 250:
-                    self.lightness_yellow_l += 20
-            elif fraction_num < 5000:
-                if self.lightness_yellow_l > 90:
-                    self.lightness_yellow_l -= 20
+        # if self.is_calibration_mode == False:
+        #     if fraction_num > 35000:
+        #         if self.lightness_yellow_l < 250:
+        #             self.lightness_yellow_l += 20
+        #     elif fraction_num < 5000:
+        #         if self.lightness_yellow_l > 90:
+        #             self.lightness_yellow_l -= 20
 
         how_much_short = 0
 
@@ -365,7 +366,7 @@ class DetectLane(Node):
         
         self.is_center_x_exist = True
 
-        if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
+        if self.reliability_white_line > 40 and self.reliability_yellow_line > 40:   
             if white_fraction > 3000 and yellow_fraction > 3000:
                 centerx = np.mean([self.left_fitx, self.right_fitx], axis=0)
                 pts = np.hstack((pts_left, pts_right))
@@ -388,13 +389,13 @@ class DetectLane(Node):
 
                 cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
-        elif self.reliability_white_line <= 50 and self.reliability_yellow_line > 50:
+        elif self.reliability_white_line <= 40 and self.reliability_yellow_line > 40:
             centerx = np.add(self.left_fitx, 320)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
-        elif self.reliability_white_line > 50 and self.reliability_yellow_line <= 50:
+        elif self.reliability_white_line > 40 and self.reliability_yellow_line <= 40:
             centerx = np.subtract(self.right_fitx, 320)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
@@ -407,18 +408,14 @@ class DetectLane(Node):
         # Combine the result with the original image
         final = cv2.addWeighted(cv_image, 1, color_warp, 0.2, 0)
         final = cv2.addWeighted(final, 1, color_warp_lines, 1, 0)
-
+        pivot_point = self.get_parameter("pivot_point").get_parameter_value().integer_value
+        
         if self.is_center_x_exist == True:
             # publishes lane center
-            # self.get_logger().info(f"type: {type(centerx)}")
-            # self.get_logger().info(f"shape: {centerx.shape}")
-            # print(f"centerx: {centerx.shape}")
-            msg_desired_center = TimeStampedFloat64()
-            msg_desired_center.data = centerx.item(240)
-            print(f"center = {msg_desired_center.data}")
-            s, ns = self.get_clock().now().seconds_nanoseconds()
-            time = (s + ns * 0.000000001)
-            msg_desired_center.timestamp = time
+            msg_desired_center = Float64()
+            msg_desired_center.data = centerx.item(pivot_point)
+            final = cv2.circle(final, (int(centerx.item(pivot_point)), pivot_point), radius=12, color=(0, 0, 0),
+                                thickness=-12)
             self.pub_lane.publish(msg_desired_center)
 
         self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
