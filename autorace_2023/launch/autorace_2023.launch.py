@@ -26,16 +26,16 @@ def generate_launch_description():
     return LaunchDescription([
         bringup,
         camera,
-        # Node(
-        #     package='autorace_2023',
-        #     executable='detect_lane',
-        #     name='lane_detection',
-        # ),
-        # Node(
-        #     package="autorace_2023",
-        #     executable="pid_lane",
-        #     name="PID",
-        # ),
+        Node(
+            package='autorace_2023',
+            executable='detect_lane',
+            name='lane_detection',
+        ),
+        Node(
+            package="autorace_2023",
+            executable="pid_lane",
+            name="PID",
+        ),
         Node(
             package="referee_console",
             executable="mission_autorace_2023_referee",
@@ -46,9 +46,20 @@ def generate_launch_description():
             executable="detect",
             name="sign_detection",
         ),
-        # Node(
-        #     package="autorace_2023",
-        #     executable="mov_ctrl",
-        #     name="mov_ctrl"
-        #     ),
+        Node(
+            package="autorace_2023",
+            executable="pixels",
+            name="pxls"
+        ),
+        Node(
+            package="detect_signs",
+            executable="pid",
+            name="pid_signs",
+        ),
+        Node(
+            package="autorace_2023",
+            executable="control",
+            name="control"
+        )
+
     ])

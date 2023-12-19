@@ -100,8 +100,6 @@ class Detector(Node):
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
 		
-		# cv2.imshow('camera', img)
-		# cv2.waitKey(1)
 	
 	def detect_green(self, img):
 		lower = np.array([0, 40, 0], dtype="uint8")

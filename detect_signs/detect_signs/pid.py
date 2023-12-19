@@ -27,7 +27,6 @@ class Pid(Node):
 		# Работа с директориями
 		self.cwd = cwd
 		self.images_path = self.cwd + '/src/porosyata/detect_signs/images'
-		self.projected_path = self.images_path + '/projected.png'
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
@@ -48,14 +47,14 @@ class Pid(Node):
 		num_yellow_pixels = np.count_nonzero(yellow_color) + 1
 		num_white_pixels = np.count_nonzero(white_color) + 1
 		
-		if num_white_pixels/num_yellow_pixels > 5000:
+		if num_white_pixels/num_yellow_pixels > 6:
 			self.angular.data = 'left'
-		elif num_yellow_pixels/num_white_pixels > 5000:
+		elif num_yellow_pixels/num_white_pixels > 6:
 			self.angular.data = 'right'
 		else:
 			self.angular.data = 'forward'
 		
-		print(num_white_pixels/num_yellow_pixels)
+		# print(num_white_pixels/num_yellow_pixels)
 		self.angular_publisher.publish(self.angular)
 		
 		# whole_color = cv2.bitwise_or(yellow_color, white_color)

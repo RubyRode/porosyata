@@ -23,8 +23,9 @@ setup(
     entry_points={
         'console_scripts': [
             "detect_lane = autorace_2023.detect_lane:main",
-            "mov_ctrl = autorace_2023.mov_ctrl:main",
-            "pid_lane = autorace_2023.pid_lane:main"
+            "pid_lane = autorace_2023.pid_lane:main",
+            "pixels = autorace_2023.pixels:main",
+            "control = autorace_2023.control:main",
         ],
     },
 )
