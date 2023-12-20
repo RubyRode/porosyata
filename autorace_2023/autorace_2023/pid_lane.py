@@ -96,3 +96,4 @@ def main():
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.fnShutDown()
+        return 0

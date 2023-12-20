@@ -60,6 +60,7 @@ def main(args=None):
 	except KeyboardInterrupt:
 		pixel_mover.destroy_node()
 		rclpy.shutdown()
+		return 0
 
 if __name__ == '__main__':
     main()

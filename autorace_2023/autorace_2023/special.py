@@ -29,7 +29,7 @@ class Special(Node):
 		self.curr_mode = 0
 
 	def changeMode(self, msg):
-		if msg == -1:
+		if msg.data == -1:
 			self.switch = 1
 		else:
 			self.switch = 0
@@ -58,3 +58,4 @@ def main(args=None):
 	except KeyboardInterrupt:
 		special.destroy_node()
 		rclpy.shutdown()
+		return 0

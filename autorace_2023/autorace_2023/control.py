@@ -49,3 +49,4 @@ def main(args=None):
 	except KeyboardInterrupt:
 		controller.destroy_node()
 		rclpy.shutdown()
+		return 0

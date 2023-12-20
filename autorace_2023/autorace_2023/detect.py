@@ -214,6 +214,7 @@ def main(args=None):
 	except KeyboardInterrupt:
 		detector.destroy_node()
 		rclpy.shutdown()
+		return 0
 
 
 

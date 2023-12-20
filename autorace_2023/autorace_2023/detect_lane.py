@@ -429,3 +429,4 @@ def main():
     except KeyboardInterrupt:
         node.destroy_node()
         rclpy.shutdown()
+        return 0
