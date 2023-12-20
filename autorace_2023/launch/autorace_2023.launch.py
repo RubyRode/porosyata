@@ -31,11 +31,16 @@ def generate_launch_description():
             executable="detect",
             name="sign_detection",
         ),
-        Node(
-            package="autorace_2023",
-            executable="control",
-            name="control"
-        ),
+        # Node(
+        #     package="autorace_2023",
+        #     executable="control",
+        #     name="control"
+        # ),
+        # Node(
+        #     package="autorace_2023",
+        #     executable="special",
+        #     name="hard_code"
+        # ),
         Node(
 
             package='autorace_2023',
@@ -48,11 +53,11 @@ def generate_launch_description():
             name="PID",
         ),
 
-        Node(
-            package="autorace_2023",
-            executable="pid_pixels",
-            name="pid_pixels",
-        ),   
+        # Node(
+        #     package="autorace_2023",
+        #     executable="pid_pixels",
+        #     name="pid_pixels",
+        # ),   
 
         Node(
             package="referee_console",
