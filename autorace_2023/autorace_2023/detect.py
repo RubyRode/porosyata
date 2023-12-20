@@ -6,8 +6,11 @@ import cv2
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Int8, Int8
+from std_msgs.msg import String, Int8
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Twist
+import time
+from rclpy.parameter import Parameter
 
 class Detector(Node):
 	def __init__(self, cwd):
@@ -25,31 +28,58 @@ class Detector(Node):
 			Int8, 
 			'/detect/signs/mode', 
 			1)
+
+		# self.special_callback = self.create_subscription(
+		# 	Int8,
+		# 	'/control/special/callback',
+		# 	self.spec_call,
+		# 	1)
+
+		self.cmd_vel_publisher = self.create_publisher(
+			Twist,
+			"/cmd_vel",
+			1)
+
+		self.mover_publisher = self.create_publisher(
+			Int8,
+			'/control/mover',
+			1)
+
 		
 		# Флаг, нашли ли то, что искали
 		self.is_found = False
 		# Режимы работы детектора
 		self.modes = {
 			0: 'looking for some green lantern',
-			1: '/templates/intersection.png',
-			2: '/templates/turn_left.png',
-			3: '/templates/turn_right.png',
-			4: '/templates/blocks.png',
-			5: 'going through some blocks',
-			6: '/templates/parking.png',
-			7: '/templates/car_left.png',
-			8: '/templates/car_right.png',
- 			9: 'ryan gosling parking',
-			10: '/templates/zebra.png',
-			11: 'looking for some knight',
-			12: '/templates/tunnel.png',
-			13: 'looking for some slam',
-			14: 'finish',
+			1: 'enable PID',
+			2: '/templates/intersection.png',
+			3: 'found intersection sign',
+			4: 'disable PID',
+			5: '/templates/right_small.png', #'/templates/turn_right.png'
+			6: '/templates/turn_left.png',
+			7: 'enable PID'
+			# 0: 'looking for some green lantern',
+			# 1: '/templates/intersection.png',
+			# 2: '/templates/turn_left.png',
+			# 3: '/templates/turn_right.png',
+			# 4: '/templates/blocks.png',
+			# 5: 'going through some blocks',
+			# 6: '/templates/parking.png',
+			# 7: '/templates/car_left.png',
+			# 8: '/templates/car_right.png',
+ 			# 9: 'ryan gosling parking',
+			# 10: '/templates/zebra.png',
+			# 11: 'looking for some knight',
+			# 12: '/templates/tunnel.png',
+			# 13: 'looking for some slam',
+			# 14: 'finish',
 			
 		}
 		# Текущий режим работы детектора
 		# (сначала фиксируем зеленый свет)
 		self.curr_mode = 0
+		self.pid_on_off_msg = Int8()
+		self.pid_on_off_msg.data = 0
 		# Сообщение, которое будем публиковать при нахождении того,
 		# что искали
 		self.mode_msg = Int8()
@@ -60,98 +90,166 @@ class Detector(Node):
 		self.images_path = self.cwd + '/src/porosyata/autorace_2023/images'
 		self.curr_frame_path = self.images_path + '/curr_frame.png'
 		self.curr_template = self.images_path + self.modes[self.curr_mode][0]
+
+		self.timer_node = rclpy.create_node('intersection_timer')
+		self.timer_node.set_parameters([Parameter('use_sim_time', value=True)])
+		self.timer = self.timer_node.create_timer(0.0001, self.timerCb)
+		self.cur_time = 0
 		
 		# Связка OpenCV с ROS'овскими сообщениями
 		self.br = CvBridge()
+
+	def spec_call(self, msg):
+		self.curr_mode = msg.data
 	
+	# def mode_callback(self, msg):
+	# 	curr_mode = msg.data
+		
+	# 	mover_msg = Int8()
+	# 	if curr_mode in [1, 5, 6]:
+	# 		mover_msg.data = 1
+	# 	elif curr_mode in [4]:
+	# 		mover_msg.data = 0
+	# 	else:
+	# 		mover_msg.data = -1
+	# 		# special parts
+	# 	# self.get_logger().info(f"control_curr_mode {curr_mode}, {mover_msg.data}")
+	# 	self.mover_publisher.publish(mover_msg)
+
 	def img_callback(self, msg):
 		# Фиксируем текущий кадр
 		img = self.br.imgmsg_to_cv2(msg)
 		img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 		# Записываем его (потом уберу запись, скорее всего)
 		# cv2.imwrite(self.curr_frame_path, img)
-		
 		# Зеленый свет
 		match self.curr_mode:
 			case 0: 
-				if self.detect_green(img):
-					self.is_found = True
+				if self.detect_green(img): # looking for some green
+					# self.get_logger().info("GREEN_FOUND")
+					self.is_found = True # found green
+					self.curr_mode = 1
 			case 1:
-				self.detect_sign(img, self.curr_mode)
+				self.pid_on_off_msg.data = 1
+				self.curr_mode = 2
+
+
+				# if self.detect_sign(img):
+				# 	self.pid_on_off_msg.data = -1
+				# else:
+				# 	self.pid_on_off_msg.data = 1
+
+				# is_done = self.intersection()
+				# if is_done:
+				# 	self.curr_mode = 2
 			case 2:
-				is_found, is_left = self.choose_from_two(img)
-				if is_found:
-					self.is_found = True
-					if not is_left:
-						self.curr_mode += 1
+				if self.detect_sign(img, self.curr_mode):
+					self.curr_mode = 3
+
+			case 3:
+				self.pid_on_off_msg.data = 0
+				self.curr_mode = 4
+
 			case 4:
-				self.detect_sign(img, self.curr_mode)
+				if self.intersection():
+					self.curr_mode = 5
 			case 5:
-				# hardcode blocks
-				self.is_found = True
-			case 6:
-				self.detect_sign(img, self.curr_mode)
+				if self.detect_sign(img, 5):
+					if self.turn(-1):
+						self.curr_mode = 7
+				if self.detect_sign(img, 6):
+					if self.turn(1):
+						self.curr_mode = 7
 			case 7:
-				is_found, is_left = self.choose_from_two(img)
-				if is_found:
-					self.is_found = True
-					if not is_left:
-						self.curr_mode += 1
-			case 9:
-				# hardcode parking
-				self.is_found = True
-			case 10:
-				self.detect_sign(img, self.curr_mode)
-			case 11:
-				if self.detect_pedestrian(img):
-					self.is_found = True
-			case 12:
-				self.detect_sign(img, self.curr_mode)
-			case 13:
-				# hardcode slam
-				self.is_found = True
-			case 14:
-				self.is_found = True
+				self.pid_on_off_msg.data = 1
+				# self.curr_mode = 2
+			# case 2:
+			# 	is_found, is_left = self.choose_from_two(img)
+			# 	if is_found:
+			# 		self.is_found = True
+			# 		if not is_left:
+			# 			self.curr_mode += 1
+			# case 4:
+			# 	self.detect_sign(img, self.curr_mode)
+			# case 5:
+			# 	# hardcode blocks
+			# 	self.is_found = True
+			# case 6:
+			# 	self.detect_sign(img, self.curr_mode)
+			# case 7:
+			# 	is_found, is_left = self.choose_from_two(img)
+			# 	if is_found:
+			# 		self.is_found = True
+			# 		if not is_left:
+			# 			self.curr_mode += 1
+			# case 9:
+			# 	# hardcode parking
+			# 	self.is_found = True
+			# case 10:
+			# 	self.detect_sign(img, self.curr_mode)
+			# case 11:
+			# 	if self.detect_pedestrian(img):
+			# 		self.is_found = True
+			# case 12:
+			# 	self.detect_sign(img, self.curr_mode)
+			# case 13:
+			# 	# hardcode slam
+			# 	self.is_found = True
+			# case 14:
+			# 	self.is_found = True
 
 		if self.is_found:
-			self.curr_mode += 1
+			# self.curr_mode += 1
 			self.mode_msg.data = self.curr_mode
 			self.is_found = False
-
 		self.mode_publisher.publish(self.mode_msg)
-		#self.get_logger().info(f"/detect/signs/mode: {self.mode_msg.data}, {self.curr_mode}")
+		self.mover_publisher.publish(self.pid_on_off_msg)
+		self.get_logger().info(f"detect.curr_mode: {self.modes[self.curr_mode]}")
 
-
-
-		# if self.curr_mode == 0:
-		# 	self.detect_green(img)
-		# # Выбор направления поворота или места на парковке
-		# # (выбор между двумя вариантами)
-		# elif self.curr_mode == 2 or self.curr_mode == 7:
-		# 	self.choose_from_two(img)
-		# # Ищем пешехода перед машиной
-		# elif self.curr_mode == 11:
-		# 	self.detect_pedestrian(img)
-		# # Заглушка
-		# elif self.curr_mode == 5 or self.curr_mode == 9:
-		# 	self.curr_mode += 1
-		# # Просто поиск знаков
-		# else:
-		# 	self.detect_sign(img, self.curr_mode)
-		# # self.get_logger().info(f"{self.curr_mode}")
-		# print(self.modes[self.curr_mode])
-		# # Если нашли, что искали, переключаем режим
-		# if self.is_found:
-		# 	self.mode_publisher.publish(self.mode_msg)
-		# 	self.curr_mode += 1
-		# 	self.curr_mode %= 14
-		# 	self.curr_template = self.images_path + self.modes[self.curr_mode]
-		# 	self.is_found = False
 
 		send_img = self.br.cv2_to_imgmsg(img) 
 		self.publisher.publish(send_img)
-		
 	
+	def sleep(self, secs):
+		rclpy.spin_once(self.timer_node)  # two times, because one is not enough to update cur_time
+		rclpy.spin_once(self.timer_node)
+		t0 = self.cur_time
+		d = 0
+	    # self.get_logger().info(f'timer started with {t0} and {secs}')
+		while d <= secs:
+			rclpy.spin_once(self.timer_node)
+			t = self.cur_time
+			d = t - t0
+
+	def timerCb(self):
+		# self.get_logger().info('timer_node callback')
+		self.cur_time = self.timer_node.get_clock().now().nanoseconds * 1e-9
+
+	def intersection(self):
+		msg = Twist()
+		msg.linear.x = 0.33
+		msg.angular.z = 1.3
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(1.4)
+		msg.linear.x = 0.
+		msg.angular.z = 0.
+		# callback_msg = Int8()
+		# callback_msg.data = self.curr_mode
+		self.cmd_vel_publisher.publish(msg)
+		return True
+		# self.special_callback.publish(callback_msg)
+
+	def turn(self, side):
+		msg = Twist()
+		msg.linear.x = 0.1
+		msg.angular.z = side * 1.5
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(2.5)
+		msg.linear.x = 0.
+		msg.angular.z = 0.
+		self.cmd_vel_publisher.publish(msg)
+		return True
+
 	def detect_green(self, img):
 		lower = np.array([0, 40, 0], dtype="uint8")
 		upper = np.array([10, 255, 10], dtype="uint8")

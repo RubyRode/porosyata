@@ -7,8 +7,9 @@ import cv2
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, UInt8, Int8
-from std_msgs.msg import String
+from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Image
+import time
 
 class Special(Node):
 	def __init__(self):
@@ -25,20 +26,38 @@ class Special(Node):
 			self.changeMode,
 			1)
 
+		self.special_callback = self.create_publisher(
+			Int8,
+			'/control/special/callback',
+			1)
+
+		self.cmd_vel_publisher = self.create_publisher(
+			Twist,
+			"/cmd_vel",
+			1)
+
 		self.switch = 0
 		self.curr_mode = 0
+		self.callback = 0
+		self.spec_run_rate = self.create_rate(10, self.get_clock())
 
 	def changeMode(self, msg):
 		if msg.data == -1:
+			# self.get_logger().info(f"special got message: {msg.data}")
 			self.switch = 1
 		else:
 			self.switch = 0
 
 	def mode_callback(self, msg):
 		if self.switch:
-			self.curr_mode = msg
+
+			self.curr_mode = msg.data
 
 			match self.curr_mode:
+				case 2:
+					self.get_logger().info("case2")
+					self.intersection()
+					self.get_logger().info("case2 finished")
 				case 5:
 					self.blocks()
 				case 9:
@@ -48,7 +67,20 @@ class Special(Node):
 				case 13:
 					self.slam()
 
-
+	def intersection(self):
+		msg = Twist()
+		for i in range(10):
+			msg.linear.x = 0.5
+			msg.angular.z = 0.5
+			self.cmd_vel_publisher.publish(msg)
+			time.sleep(0.1)
+		msg.linear.x = 0.
+		msg.angular.z = 0.
+		self.curr_mode = 3
+		callback_msg = Int8()
+		callback_msg.data = self.curr_mode
+		self.cmd_vel_publisher.publish(msg)
+		self.special_callback.publish(callback_msg)
 
 def main(args=None):
 	rclpy.init(args=args)

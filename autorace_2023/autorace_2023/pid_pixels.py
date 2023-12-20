@@ -83,7 +83,7 @@ class Pid(Node):
 		# print(num_white_pixels/num_yellow_pixels)
 		if self.switch == 1:
 			self.cmd_vel_publisher.publish(send_msg)
-		self.angular_publisher.publish(self.angular)
+		# self.angular_publisher.publish(angular)
 		
 		# whole_color = cv2.bitwise_or(yellow_color, white_color)
 		# cv2.rectangle(whole_color, (100, 100), (200, 200), signal_color, 2)

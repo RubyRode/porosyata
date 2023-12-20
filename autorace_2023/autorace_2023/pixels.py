@@ -14,7 +14,7 @@ class PixelMover(Node):
 	def __init__(self):
 		super().__init__('pixel_mover')
 		self.control_subscription = self.create_subscription(
-			String,
+			Int8,
 			'/control/mover',
 			self.control_callback,
 			10)

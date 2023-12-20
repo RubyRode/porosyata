@@ -27,7 +27,7 @@ class Controller(Node):
 
 	def mode_callback(self, msg):
 		curr_mode = msg.data
-		self.get_logger().info(f"control_curr_mode {curr_mode}")
+		
 		mover_msg = Int8()
 		if curr_mode in [1, 5, 6]:
 			mover_msg.data = 1
@@ -36,6 +36,7 @@ class Controller(Node):
 		else:
 			mover_msg.data = -1
 			# special parts
+		# self.get_logger().info(f"control_curr_mode {curr_mode}, {mover_msg.data}")
 		self.mover_publisher.publish(mover_msg)
 
 

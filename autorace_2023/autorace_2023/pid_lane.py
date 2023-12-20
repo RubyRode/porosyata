@@ -45,8 +45,10 @@ class ControlLane(Node):
 
     def changeMode(self, msg):
         if msg.data == 1:
+
             self.switch = 1
         else:
+            self.I = 0
             self.switch = 0
 
     def cbFollowLane(self, desired_center):
