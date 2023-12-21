@@ -3,7 +3,7 @@ import numpy as np
 
 from cv_bridge import CvBridge
 import cv2
-
+from ament_index_python.packages import get_package_share_directory
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int8
@@ -12,8 +12,23 @@ from geometry_msgs.msg import Twist
 import time
 from rclpy.parameter import Parameter
 
+# sift
+def generate_keypoints(pngs):
+	sift = cv2.SIFT_create()
+	kps = []
+	# /home/ruby/ros2_ws/src/porosyata/autorace_2023/images/templates/left_.png
+	for i in pngs:
+		sign_pth = os.path.join(get_package_share_directory('autorace_2023'), 'images', 'templates', i)
+		print(sign_pth)
+		sign = cv2.imread(sign_pth)
+		sign_gray = cv2.cvtColor(sign, cv2.COLOR_BGR2GRAY)
+		skp, sdes = sift.detectAndCompute(sign_gray, None)
+		name = i.split('.')[0]
+		kps.append((skp, sdes, name))
+	return kps
+
 class Detector(Node):
-	def __init__(self, cwd):
+	def __init__(self, cwd, signs):
 		super().__init__('snap_subscriber')
 		self.img_subscription = self.create_subscription(
 			Image,
@@ -45,6 +60,12 @@ class Detector(Node):
 			'/control/mover',
 			1)
 
+		# sift
+		self.sift = cv2.SIFT_create()
+		self.bf = cv2.BFMatcher()
+		self.signs = signs
+		#
+
 		
 		# Флаг, нашли ли то, что искали
 		self.is_found = False
@@ -56,7 +77,7 @@ class Detector(Node):
 			3: 'found intersection sign',
 			4: 'disable PID',
 			5: '/templates/right_small.png', #'/templates/turn_right.png'
-			6: '/templates/turn_left.png',
+			6: '/templates/left_.png',
 			7: 'enable PID'
 			# 0: 'looking for some green lantern',
 			# 1: '/templates/intersection.png',
@@ -154,11 +175,26 @@ class Detector(Node):
 				if self.intersection():
 					self.curr_mode = 5
 			case 5:
+				# не удалять это сифт
+				# image = self.br.imgmsg_to_cv2(msg, "bgr8") 
+				# res = self.analyze(image)
+
+				# if res == "right_small":
+				# 	if self.turn_right():
+				#  		self.curr_mode = 7
+				# elif res == "left_":
+				# 	if self.turn_left():
+				# 		self.curr_mode = 7
+				# if res != 'nothing':
+				# 	self.direction = res
+				# 	self.started = True
+
+				# это наш детект
 				if self.detect_sign(img, 5):
-					if self.turn(-1):
+					if self.turn_right():
 						self.curr_mode = 7
 				if self.detect_sign(img, 6):
-					if self.turn(1):
+					if self.turn_left():
 						self.curr_mode = 7
 			case 7:
 				self.pid_on_off_msg.data = 1
@@ -239,12 +275,30 @@ class Detector(Node):
 		return True
 		# self.special_callback.publish(callback_msg)
 
-	def turn(self, side):
+	def turn_right(self):# нужно скорректировать тайминги и скорости так чтобы робот норм выезжал на интерсекшн
+		msg = Twist() 
+		msg.linear.x = 0.3
+		msg.angular.z = -1.5
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(2.)
+		msg.linear.x = 0.7
+		msg.angular.z = 0.7
+		self.cmd_vel_publisher.publish(msg)
+		msg.linear.x = 0.
+		msg.angular.z = 0.
+		self.cmd_vel_publisher.publish(msg)
+		# self.sleep(0.2)
+		return True
+
+	def turn_left(self):# нужно скорректировать тайминги и скорости так чтобы робот норм выезжал на интерсекшн
 		msg = Twist()
 		msg.linear.x = 0.1
-		msg.angular.z = side * 1.5
+		msg.angular.z = 1.5
 		self.cmd_vel_publisher.publish(msg)
-		self.sleep(2.5)
+		self.sleep(2.)
+		msg.linear.x = 0.7
+		msg.angular.z = -0.7
+		self.cmd_vel_publisher.publish(msg)
 		msg.linear.x = 0.
 		msg.angular.z = 0.
 		self.cmd_vel_publisher.publish(msg)
@@ -275,6 +329,27 @@ class Detector(Node):
 				self.is_found = True
 			cv2.rectangle(img, pt, (pt[0] + w, pt[1] + h), (255, 0, 150), 2)
 		return self.is_found
+
+	def analyze(self, image):
+		image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+		ikp, ides = self.sift.detectAndCompute(image_gray, None)
+		# BFMatcher решает матч
+		for i in self.signs:
+			matches = self.bf.knnMatch(i[1], ides, k=2)
+			# Отрегулируйте коэффициент
+			good = []
+			for m, n in matches:
+				if m.distance < 0.50 * n.distance:
+					good.append([m])
+			# sign_pth = os.path.join(get_package_share_directory('autorace_core_CVlization'), 'signs', 'left.png')
+			# sign = cv2.imread(sign_pth)
+			# dbg = cv2.drawMatchesKnn(sign, i[0], image, ikp, good, None, flags=2)
+			# msg = self.br.cv2_to_imgmsg(dbg, 'bgr8')
+			# self.dbg_pub.publish(msg)
+			if len(good) >= 10:
+				self.get_logger().info("intersection image analyzing " + "found " + i[2])
+				return i[2]
+		return 'nothing'
 	
 	def choose_from_two(self, img):
 		is_left = False
@@ -303,11 +378,12 @@ class Detector(Node):
 
 		return False
 
-def main(args=None):
+def main():
 	cwd = os.getcwd()
-	rclpy.init(args=args)
+	signs = generate_keypoints(["left_.png", "right_small.png"])
+	rclpy.init()
 	try:
-		detector = Detector(cwd)
+		detector = Detector(cwd, signs)
 		rclpy.spin(detector)
 	except KeyboardInterrupt:
 		detector.destroy_node()
