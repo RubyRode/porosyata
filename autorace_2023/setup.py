@@ -23,12 +23,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "control = autorace_2023.control:main",
             "detect = autorace_2023.detect:main",
             "detect_lane = autorace_2023.detect_lane:main",
             "pid_lane = autorace_2023.pid_lane:main",
-            "pid_pixels = autorace_2023.pid_pixels:main",
-            "special = autorace_2023.special:main",
         ],
     },
 )

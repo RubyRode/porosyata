@@ -44,6 +44,7 @@ class ControlLane(Node):
 
 
     def changeMode(self, msg):
+        # self.get_logger().info(f"switch: {self.switch}")
         if msg.data == 1:
 
             self.switch = 1

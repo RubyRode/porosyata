@@ -76,7 +76,7 @@ class Detector(Node):
 			2: '/templates/intersection.png',
 			3: 'found intersection sign',
 			4: 'disable PID',
-			5: '/templates/right_small.png', #'/templates/turn_right.png'
+			5: '/templates/right_test.png', #'/templates/turn_right.png'
 			6: '/templates/left_.png',
 			7: 'enable PID'
 			# 0: 'looking for some green lantern',
@@ -142,7 +142,7 @@ class Detector(Node):
 		img = self.br.imgmsg_to_cv2(msg)
 		img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 		# Записываем его (потом уберу запись, скорее всего)
-		# cv2.imwrite(self.curr_frame_path, img)
+		cv2.imwrite(self.curr_frame_path, img)
 		# Зеленый свет
 		match self.curr_mode:
 			case 0: 
@@ -191,9 +191,12 @@ class Detector(Node):
 
 				# это наш детект
 				if self.detect_sign(img, 5):
+					self.is_found=True
 					if self.turn_right():
 						self.curr_mode = 7
-				if self.detect_sign(img, 6):
+
+				elif self.detect_sign(img, 6):
+					self.is_found=True
 					if self.turn_left():
 						self.curr_mode = 7
 			case 7:
@@ -238,9 +241,9 @@ class Detector(Node):
 			# self.curr_mode += 1
 			self.mode_msg.data = self.curr_mode
 			self.is_found = False
+			self.get_logger().info(f"detect.curr_mode: {self.modes[self.curr_mode]}")
 		self.mode_publisher.publish(self.mode_msg)
 		self.mover_publisher.publish(self.pid_on_off_msg)
-		self.get_logger().info(f"detect.curr_mode: {self.modes[self.curr_mode]}")
 
 
 		send_img = self.br.cv2_to_imgmsg(img) 
@@ -269,25 +272,33 @@ class Detector(Node):
 		self.sleep(1.4)
 		msg.linear.x = 0.
 		msg.angular.z = 0.
-		# callback_msg = Int8()
-		# callback_msg.data = self.curr_mode
 		self.cmd_vel_publisher.publish(msg)
 		return True
-		# self.special_callback.publish(callback_msg)
 
-	def turn_right(self):# нужно скорректировать тайминги и скорости так чтобы робот норм выезжал на интерсекшн
+	def turn_right(self):
 		msg = Twist() 
-		msg.linear.x = 0.3
-		msg.angular.z = -1.5
+		msg.linear.x = 0.1
+		msg.angular.z = -5.5
 		self.cmd_vel_publisher.publish(msg)
-		self.sleep(2.)
-		msg.linear.x = 0.7
-		msg.angular.z = 0.7
+		self.sleep(2.35)
+		msg.linear.x = 0.22
+		msg.angular.z = 5.
 		self.cmd_vel_publisher.publish(msg)
+		self.sleep(4.)
 		msg.linear.x = 0.
-		msg.angular.z = 0.
+		msg.angular.z= 0.
 		self.cmd_vel_publisher.publish(msg)
-		# self.sleep(0.2)
+		self.sleep(0.5)
+
+		msg.linear.x = 0.18
+		msg.angular.z = -2.
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(2.3)
+		msg.linear.x = 0.
+		msg.angular.z= 0.
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(0.5)
+
 		return True
 
 	def turn_left(self):# нужно скорректировать тайминги и скорости так чтобы робот норм выезжал на интерсекшн
@@ -295,13 +306,30 @@ class Detector(Node):
 		msg.linear.x = 0.1
 		msg.angular.z = 1.5
 		self.cmd_vel_publisher.publish(msg)
-		self.sleep(2.)
-		msg.linear.x = 0.7
-		msg.angular.z = -0.7
+		self.sleep(2.5)
+		msg.linear.x = 0.0
+		msg.angular.z = 0.0
 		self.cmd_vel_publisher.publish(msg)
+
+
+		msg.linear.x = 0.22
+		msg.angular.z = -5.
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(4.)
 		msg.linear.x = 0.
-		msg.angular.z = 0.
+		msg.angular.z= 0.
 		self.cmd_vel_publisher.publish(msg)
+		self.sleep(0.5)
+
+		msg.linear.x = 0.15
+		msg.angular.z = 2.
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(2.3)
+		msg.linear.x = 0.
+		msg.angular.z= 0.
+		self.cmd_vel_publisher.publish(msg)
+		self.sleep(0.5)
+
 		return True
 
 	def detect_green(self, img):
