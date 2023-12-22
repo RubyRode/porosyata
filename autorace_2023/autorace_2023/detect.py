@@ -277,8 +277,8 @@ class Detector(Node):
 
 	def turn_right(self):
 		msg = Twist() 
-		msg.linear.x = 0.1
-		msg.angular.z = -5.5
+		msg.linear.x = 0.11
+		msg.angular.z = -0.9
 		self.cmd_vel_publisher.publish(msg)
 		self.sleep(2.35)
 		msg.linear.x = 0.22
@@ -290,7 +290,7 @@ class Detector(Node):
 		self.cmd_vel_publisher.publish(msg)
 		self.sleep(0.5)
 
-		msg.linear.x = 0.18
+		msg.linear.x = 0.12
 		msg.angular.z = -2.
 		self.cmd_vel_publisher.publish(msg)
 		self.sleep(2.3)
